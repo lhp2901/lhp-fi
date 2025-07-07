@@ -1,9 +1,9 @@
 {
   "extends": "./tsconfig.json",
   "compilerOptions": {
-    "noEmit": true,
-    "skipLibCheck": true,
-    "strict": false
+    "noEmit": true,         // Không xuất file .js khi build
+    "skipLibCheck": true,   // Bỏ qua check kiểu trong thư viện
+    "strict": false         // ✅ Tắt mọi check nghiêm ngặt: any, implicitAny, v.v...
   },
   "include": ["next-env.d.ts", "**/*.ts", "**/*.tsx"],
   "exclude": ["node_modules"]
