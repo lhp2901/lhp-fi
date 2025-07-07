@@ -1,10 +1,8 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   eslint: {
-    ignoreDuringBuilds: true, // ✅ Tắt ESLint khi build trên Vercel
+    ignoreDuringBuilds: true, // 💥 TẮT eslint trong build Vercel
   },
-  reactStrictMode: true,
-  swcMinify: true,
-}
+};
 
-module.exports = nextConfig
+module.exports = nextConfig;
