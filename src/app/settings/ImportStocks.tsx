@@ -3,35 +3,9 @@
 import { useEffect, useState } from 'react'
 import * as XLSX from 'xlsx'
 import { supabase } from '@/lib/supabase'
+import type { StockRow, ImportLog } from '@/types/stock'
 
 // ... các kiểu dữ liệu giữ nguyên như bạn gửi
-type StockRow = {
-  symbol?: string
-  date: string
-  open?: number
-  close?: number
-  high?: number
-  low?: number
-  volume?: number
-  asset_value?: number
-  foreign_buy_volume?: number
-  foreign_sell_volume?: number
-  foreign_buy_value?: number
-  foreign_sell_value?: number
-  user_id?: string
-}
-
-type ImportLog = {
-  id: number
-  user_id: string
-  type: string
-  total_rows: number
-  updated_rows: number
-  imported_at: string
-  note?: string
-}
-
-
 export default function ImportStocks() {
   const [entries, setEntries] = useState<StockRow[]>([])
   const [symbol, setSymbol] = useState('')
