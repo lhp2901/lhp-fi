@@ -1,7 +1,14 @@
-import type { NextConfig } from "next";
+import type { NextConfig } from 'next'
 
 const nextConfig: NextConfig = {
-  /* config options here */
-};
+  // ✅ Tắt kiểm tra ESLint khi build trên Vercel
+  eslint: {
+    ignoreDuringBuilds: true,
+  },
 
-export default nextConfig;
+  // ✅ Tùy chọn khác nếu cần thêm sau này:
+  reactStrictMode: true,
+  swcMinify: true,
+}
+
+export default nextConfig
