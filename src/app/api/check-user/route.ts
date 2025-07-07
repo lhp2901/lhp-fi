@@ -10,7 +10,7 @@ export async function POST(req: NextRequest) {
     return new Response(JSON.stringify({ error: error.message }), { status: 500 })
   }
 
-  const user = data.users.find((u) => u.email === email)
+  const user = data.users.find((u: any) => u.email === email)
 
   if (!user) {
     return new Response(JSON.stringify({ exists: false }), { status: 200 })

@@ -3,29 +3,7 @@
 import { useEffect, useState } from 'react'
 import * as XLSX from 'xlsx'
 import { supabase } from '@/lib/supabase'
-
-type StockRow = {
-  symbol: string
-  date: string
-  open?: number
-  close?: number
-  high?: number
-  low?: number
-  volume?: number
-  asset_value?: number
-  foreign_buy_volume?: number
-  foreign_buy_value?: number
-  foreign_sell_volume?: number
-  foreign_sell_value?: number
-}
-
-type ImportLog = {
-  id: string
-  imported_at: string
-  total_rows: number
-  updated_rows: number
-  note: string
-}
+import { StockRow } from '@/types/types'
 
 // ... các kiểu dữ liệu giữ nguyên như bạn gửi
 export default function ImportStocks() {
@@ -142,7 +120,7 @@ export default function ImportStocks() {
     const rowsWithUser = entries.map(row => ({ ...row, user_id: userId }))
 
     const { error } = await supabase.from('stock_entries').upsert(rowsWithUser, {
-       onConflict: ['user_id', 'date', 'symbol']
+       onConflict: 'user_id,date,symbol'
     })
 
     if (error) {

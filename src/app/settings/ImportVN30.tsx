@@ -127,7 +127,7 @@ export default function ImportVN30() {
     const updatedCount = entries.filter(row => existingDates.has(row.date)).length
     const oldCount = entries.filter(row => new Date(row.date) < new Date('2020-01-01')).length
 
-    const { error } = await supabase.from('vn30_data').upsert(entries, { onConflict: ['user_id', 'date'] })
+    const { error } = await supabase.from('vn30_data').upsert(entries, { onConflict: 'user_id,date' })
     if (error) {
       setMessage(`❌ Lỗi khi import: ${error.message}`)
     } else {
@@ -135,7 +135,7 @@ export default function ImportVN30() {
       const userId = userData?.user?.id
       if (userId) {
         await supabase.from('import_logs').insert({
-          user_id: userId,
+          user_id: user?.id || '',
           imported_at: new Date().toISOString(),
           type: 'vn30',
           total_rows: entries.length,

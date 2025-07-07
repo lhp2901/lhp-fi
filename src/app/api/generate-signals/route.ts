@@ -92,7 +92,7 @@ async function insertAISignals(rows: any[]) {
         future_gain_3d: row.future_gain_3d,
         label_win: row.label_win,
       },
-      { onConflict: ['symbol', 'date'] }
+      { onConflict: 'date,symbol' }
     )
 
     if (!error) successCount++
