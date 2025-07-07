@@ -120,7 +120,7 @@ export default function ImportStocks() {
     const rowsWithUser = entries.map(row => ({ ...row, user_id: userId }))
 
     const { error } = await supabase.from('stock_entries').upsert(rowsWithUser, {
-      onConflict: ['user_id', 'date', 'symbol']
+       onConflict: ['user_id', 'date', 'symbol']
     })
 
     if (error) {

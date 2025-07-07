@@ -1,5 +1,5 @@
-type StockRow = {
-  symbol?: string
+export type StockRow = {
+  symbol: string
   date: string
   open?: number
   close?: number
@@ -17,12 +17,10 @@ type StockRow = {
   user_id?: string
 }
 
-type ImportLog = {
-  id: number
-  user_id: string
-  type: string
+export type ImportLog = {
+  id: string
+  imported_at: string
   total_rows: number
   updated_rows: number
-  imported_at: string
-  note?: string
+  note: string
 }
