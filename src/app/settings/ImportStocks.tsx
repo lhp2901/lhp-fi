@@ -156,7 +156,7 @@ const handleImport = async () => {
   const rowsWithUser = entries.map(row => ({ ...row, user_id }))
 
   const { error } = await supabase.from('stock_entries').upsert(rowsWithUser, {
-    onConflict: 'user_id,date,symbol',
+    onConflict: 'user_id,date,symbol' as any
   })
 
     if (error) {

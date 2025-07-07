@@ -146,7 +146,7 @@ export default function ImportVNINDEX() {
     const updatedCount = entries.filter(row => existingDates.has(row.date)).length
     const oldCount = entries.filter(row => new Date(row.date) < new Date('2020-01-01')).length
 
-    const { error } = await supabase.from('vnindex_data').upsert(entries, { onConflict: 'user_id,date' })
+    const { error } = await supabase.from('vnindex_data').upsert(entries, { onConflict: 'user_id,date' as any })
     if (error) {
       setMessage(`❌ Lỗi khi import: ${error.message}`)
     } else {
