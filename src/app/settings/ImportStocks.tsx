@@ -109,7 +109,7 @@ export default function ImportStocks() {
     setLoading(true)
 
     const { data: existing } = await supabase.from('stock_entries').select('date, symbol')
-    const existingKeys = new Set(existing?.map((r: any) => `${r.symbol}-${r.date}`))
+    const existingKeys = new Set((existing as any[]).map((r) => `${r.symbol}-${r.date}`)) 
     const updatedCount = entries.filter(row => existingKeys.has(`${row.symbol}-${row.date}`)).length
     const oldCount = entries.filter(row => new Date(row.date) < new Date('2020-01-01')).length
 
