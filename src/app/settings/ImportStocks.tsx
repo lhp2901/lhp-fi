@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react'
 import * as XLSX from 'xlsx'
 import { supabase } from '@/lib/supabase'
-import type { StockRow, ImportLog } from '@/types/stock'
+import type { StockRow, ImportLog } from '@/types'
 
 // ... các kiểu dữ liệu giữ nguyên như bạn gửi
 export default function ImportStocks() {
