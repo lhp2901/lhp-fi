@@ -6,7 +6,7 @@ import {
 } from 'recharts'
 import { useMemo, useState, useEffect } from 'react'
 import { FaSort, FaSortUp, FaSortDown } from 'react-icons/fa'
-
+type FilterType = 'all' | 'volume' | 'ai' | 'breakout' | 'distribution' | 'rsi-low'
 interface Props {
   data: any[]
   name: string
@@ -317,7 +317,7 @@ export default function MarketPanel({ data, name }: Props) {
           <h3 className="font-medium">🗍 Tín hiệu Cá Mập Mới Nhất</h3>
           <select
             value={filterType}
-            onChange={e => setFilterType(e.target.value)}
+            onChange={e => setFilterType(e.target.value as FilterType)}
             className="text-sm bg-gray-800 border border-gray-600 text-white px-2 py-1 rounded"
           >
             <option value="all">🎯 Tất cả</option>

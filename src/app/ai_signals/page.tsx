@@ -1,3 +1,6 @@
+'use client'
+
+import { useEffect, useState } from 'react'
 import { supabase } from '@/lib/supabase'
 
 const calculateIndicators = (data: any[]) => {
@@ -28,51 +31,74 @@ const calculateIndicators = (data: any[]) => {
   })
 }
 
-const generateSignals = async () => {
-  const { data: symbols } = await supabase
-    .from('stock_entries')
-    .select('symbol')
-    .neq('symbol', null)
+export default function GenerateSignalsPage() {
+  const [log, setLog] = useState<string>('⏳ Đang sinh tín hiệu AI...')
 
-  const uniqueSymbols = Array.from(new Set(symbols?.map(s => s.symbol)))
+  useEffect(() => {
+    const generateSignals = async () => {
+      const { data: symbols } = await supabase
+        .from('stock_entries')
+        .select('symbol')
+        .neq('symbol', null)
 
-  for (const symbol of uniqueSymbols) {
-    const { data: rows } = await supabase
-      .from('stock_entries')
-      .select('*')
-      .eq('symbol', symbol)
-      .order('date', { ascending: true })
+      const uniqueSymbols = Array.from(new Set(symbols?.map(s => s.symbol)))
 
-    if (!rows || rows.length < 25) continue
+      for (const symbol of uniqueSymbols) {
+        const { data: rows } = await supabase
+          .from('stock_entries')
+          .select('*')
+          .eq('symbol', symbol)
+          .order('date', { ascending: true })
 
-    const enriched = calculateIndicators(rows)
+        if (!rows || rows.length < 25) continue
 
-    for (let i = 0; i < enriched.length - 3; i++) {
-      const row = enriched[i]
-      const futureClose = enriched[i + 3].close
-      const futureGain = ((futureClose - row.close) / row.close) * 100
-      const labelWin = futureGain > 3
+        const enriched = calculateIndicators(rows)
 
-      await supabase.from('ai_signals').insert({
-        symbol,
-        date: row.date,
-        close: row.close,
-        volume: row.volume,
-        ma20: row.ma20,
-        rsi: row.rsi,
-        bb_upper: row.upperBB,
-        bb_lower: row.lowerBB,
-        foreign_buy_value: row.foreign_buy_value,
-        foreign_sell_value: row.foreign_sell_value,
-        proprietary_buy_value: row.proprietary_buy_value,
-        proprietary_sell_value: row.proprietary_sell_value,
-        future_gain_3d: futureGain,
-        label_win: labelWin
-      })
+        const inserts = []
+
+        for (let i = 0; i < enriched.length - 3; i++) {
+          const row = enriched[i]
+          const futureClose = enriched[i + 3].close
+          const futureGain = ((futureClose - row.close) / row.close) * 100
+          const labelWin = futureGain > 3
+
+          inserts.push({
+            symbol,
+            date: row.date,
+            close: row.close,
+            volume: row.volume,
+            ma20: row.ma20,
+            rsi: row.rsi,
+            bb_upper: row.upperBB,
+            bb_lower: row.lowerBB,
+            foreign_buy_value: row.foreign_buy_value,
+            foreign_sell_value: row.foreign_sell_value,
+            proprietary_buy_value: row.proprietary_buy_value,
+            proprietary_sell_value: row.proprietary_sell_value,
+            future_gain_3d: futureGain,
+            label_win: labelWin
+          })
+        }
+
+        if (inserts.length > 0) {
+          const { error: insertError } = await supabase.from('ai_signals').insert(inserts)
+          if (insertError) {
+            console.error(`❌ Lỗi insert ${symbol}:`, insertError.message)
+          } else {
+            console.log(`✅ ${symbol}: ${inserts.length} tín hiệu AI được lưu.`)
+          }
+        }
+      }
+
+      setLog('✅ Đã hoàn tất sinh tín hiệu AI.')
     }
-  }
 
-  console.log('✅ Đã sinh dữ liệu AI vào bảng ai_signals.')
+    generateSignals()
+  }, [])
+
+  return (
+    <div className="p-6 text-white text-lg">
+      {log}
+    </div>
+  )
 }
-
-generateSignals()

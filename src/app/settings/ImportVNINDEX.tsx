@@ -16,6 +16,7 @@ type VNIndexRow = {
   foreign_sell_value?: number
   proprietary_buy_value?: number
   proprietary_sell_value?: number
+  user_id: string
 }
 
 type ImportLog = {
@@ -80,47 +81,61 @@ export default function ImportVNINDEX() {
   }
 
   const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0]
-    if (!file) return
+  const file = e.target.files?.[0]
+  if (!file) return
 
-    const buffer = await file.arrayBuffer()
-    const workbook = XLSX.read(buffer)
+  const { data: { user }, error } = await supabase.auth.getUser()
+  const user_id: string = user?.id || ''
+  if (!user_id) return setMessage('❌ Không tìm thấy user.')
 
-    const vnSheet = workbook.Sheets['VNINDEX']
-    const rawVN = XLSX.utils.sheet_to_json(vnSheet, { header: 1 }) as any[][]
-    const vnData: VNIndexRow[] = rawVN.slice(2).map(row => ({
-      date: parseDate(row[0]),
-      close: parseNumber(row[1]),
-      open: parseNumber(row[8]),
-      high: parseNumber(row[9]),
-      low: parseNumber(row[10]),
-      volume: parseNumber(row[4]),
-      value: parseNumber(row[5])
+  const buffer = await file.arrayBuffer()
+  const workbook = XLSX.read(buffer)
+
+  // ── VNINDEX Sheet ───────────────────────────────
+  const vnSheet = workbook.Sheets['VNINDEX']
+  const rawVN = XLSX.utils.sheet_to_json(vnSheet, { header: 1 }) as any[][]
+  const vnData: VNIndexRow[] = rawVN.slice(2).map(row => ({
+    date: parseDate(row[0]) || '',
+    close: parseNumber(row[1]) || 0,
+    open: parseNumber(row[8]) || 0,
+    high: parseNumber(row[9]) || 0,
+    low: parseNumber(row[10]) || 0,
+    volume: parseNumber(row[4]) || 0,
+    value: parseNumber(row[5]) || 0,
+    user_id,
+  }))
+
+  // ── KHOINGOAI Sheet ─────────────────────────────
+  const fkSheet = workbook.Sheets['KHOINGOAI']
+  const rawFK = fkSheet ? XLSX.utils.sheet_to_json(fkSheet, { header: 1 }) as any[][] : []
+  const fkData: VNIndexRow[] = rawFK.slice(2).map(row => ({
+    date: parseDate(row[0]) || '',
+    foreign_buy_value: parseNumber(row[5]) || 0,
+    foreign_sell_value: parseNumber(row[7]) || 0,
+    user_id,
+  }))
+
+  // ── TUDOANH Sheet ───────────────────────────────
+  const tdSheet = workbook.Sheets['TUDOANH']
+  const rawTD = tdSheet ? XLSX.utils.sheet_to_json(tdSheet, { header: 1 }) as any[][] : []
+  const tdData: VNIndexRow[] = rawTD
+    .slice(2)
+    .filter(row => row[0] === 'VNINDEX')
+    .map(row => ({
+      date: parseDate(row[1]) || '',
+      proprietary_buy_value: parseNumber(row[3]) || 0,
+      proprietary_sell_value: parseNumber(row[5]) || 0,
+      user_id,
     }))
 
-    const fkSheet = workbook.Sheets['KHOINGOAI']
-    const rawFK = XLSX.utils.sheet_to_json(fkSheet, { header: 1 }) as any[][]
-    const fkData: VNIndexRow[] = rawFK.slice(2).map(row => ({
-      date: parseDate(row[0]),
-      foreign_buy_value: parseNumber(row[5]),
-      foreign_sell_value: parseNumber(row[7])
-    }))
+  // ── Gộp lại theo ngày ───────────────────────────
+  const merged = mergeByDate([vnData, fkData, tdData])
+  const cleaned = merged.filter(r => r.date)
 
-    const tdSheet = workbook.Sheets['TUDOANH']
-    const rawTD = XLSX.utils.sheet_to_json(tdSheet, { header: 1 }) as any[][]
-    const tdData: VNIndexRow[] = rawTD.slice(2).filter(row => row[0] === 'VNINDEX').map(row => ({
-      date: parseDate(row[1]),
-      proprietary_buy_value: parseNumber(row[3]),
-      proprietary_sell_value: parseNumber(row[5])
-    }))
-
-    const merged = mergeByDate([vnData, fkData, tdData])
-    const cleaned = merged.filter(r => r.date)
-
-    console.log('✅ Dòng hợp lệ:', cleaned.length, cleaned[0])
-    setEntries(cleaned)
-    setMessage(`📄 Đã đọc được ${cleaned.length} dòng dữ liệu.`)
-  }
+  console.log('✅ Dòng hợp lệ:', cleaned.length, cleaned[0])
+  setEntries(cleaned)
+  setMessage(`📄 Đã đọc được ${cleaned.length} dòng dữ liệu.`)
+}
 
   const handleImport = async () => {
     if (!entries.length) return
@@ -140,7 +155,7 @@ export default function ImportVNINDEX() {
 
       if (userId) {
         await supabase.from('import_logs').insert({
-          user_id: userId,
+    
           imported_at: new Date().toISOString(),
           type: 'vnindex',
           total_rows: entries.length,

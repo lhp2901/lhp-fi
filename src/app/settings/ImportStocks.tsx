@@ -3,8 +3,31 @@
 import { useEffect, useState } from 'react'
 import * as XLSX from 'xlsx'
 import { supabase } from '@/lib/supabase'
-import { StockRow } from '@/types/types'
 
+
+type StockRow = {
+  symbol: string
+  date: string
+  open?: number
+  close?: number
+  high?: number
+  low?: number
+  volume?: number
+  asset_value?: number
+  foreign_buy_volume?: number
+  foreign_buy_value?: number
+  foreign_sell_volume?: number
+  foreign_sell_value?: number
+  user_id: string // 🔥 BẮT BUỘC PHẢI CÓ!
+}
+
+type ImportLog = {
+  id: string
+  imported_at: string
+  total_rows: number
+  updated_rows: number
+  note: string
+}
 // ... các kiểu dữ liệu giữ nguyên như bạn gửi
 export default function ImportStocks() {
   const [entries, setEntries] = useState<StockRow[]>([])
@@ -58,76 +81,89 @@ export default function ImportStocks() {
     return Array.from(map.values())
   }
 
-  const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0]
-    if (!file) return
+ const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+  const file = e.target.files?.[0]
+  if (!file) return
 
-    const buffer = await file.arrayBuffer()
-    const workbook = XLSX.read(buffer)
-    const sheets = workbook.SheetNames
-    setAvailableSymbols(sheets.filter((s) => !['KHOINGOAI', 'TUDOANH'].includes(s)))
+  const {
+    data: { user },
+    error,
+  } = await supabase.auth.getUser()
 
-    const allMergedEntries: StockRow[] = []
+  const userId: string = user?.id || ''
+  if (!userId) return setMessage('❌ Không tìm thấy user.')
 
-    for (const sheetName of sheets) {
-      if (['KHOINGOAI', 'TUDOANH'].includes(sheetName)) continue
-      const mainSheet = workbook.Sheets[sheetName]
-      const rawMain = XLSX.utils.sheet_to_json(mainSheet, { header: 1 }) as any[][]
+  const buffer = await file.arrayBuffer()
+  const workbook = XLSX.read(buffer)
+  const sheets = workbook.SheetNames
 
-      const mainData: StockRow[] = rawMain.slice(2).map(row => ({
-        symbol: sheetName,
-        date: parseDate(row[0]),
-        close: parseNumber(row[1]),
-        open: parseNumber(row[8]),
-        high: parseNumber(row[9]),
-        low: parseNumber(row[10]),
-        volume: parseNumber(row[4]),
-        asset_value: parseNumber(row[5])
-      }))
+  setAvailableSymbols(sheets.filter((s) => !['KHOINGOAI', 'TUDOANH'].includes(s)))
 
-      const fkSheet = workbook.Sheets['KHOINGOAI']
-      const rawFK = fkSheet ? XLSX.utils.sheet_to_json(fkSheet, { header: 1 }) as any[][] : []
-      const fkData: StockRow[] = rawFK.slice(2).map(row => ({
-        symbol: sheetName,
-        date: parseDate(row[0]),
-        foreign_buy_volume: parseNumber(row[4]),
-        foreign_buy_value: parseNumber(row[5]),
-        foreign_sell_volume: parseNumber(row[6]),
-        foreign_sell_value: parseNumber(row[7])
-      }))
+  const allMergedEntries: StockRow[] = []
 
-      const merged = mergeBySymbolDate([mainData, fkData])
-      allMergedEntries.push(...merged.filter(r => r.date && r.symbol))
-    }
+  for (const sheetName of sheets) {
+    if (['KHOINGOAI', 'TUDOANH'].includes(sheetName)) continue
 
-    setEntries(allMergedEntries)
-    setMessage(`📄 Đã đọc được ${allMergedEntries.length} dòng từ ${availableSymbols.length} mã cổ phiếu.`)
+    const mainSheet = workbook.Sheets[sheetName]
+    const rawMain = XLSX.utils.sheet_to_json(mainSheet, { header: 1 }) as any[][]
+
+    const mainData: StockRow[] = rawMain.slice(2).map(row => ({
+  symbol: sheetName,
+  date: parseDate(row[0]) || '', // ép kiểu string
+  close: parseNumber(row[1]) || 0,
+  open: parseNumber(row[8]) || 0,
+  high: parseNumber(row[9]) || 0,
+  low: parseNumber(row[10]) || 0,
+  volume: parseNumber(row[4]) || 0,
+  asset_value: parseNumber(row[5]) || 0,
+  user_id: userId
+}))
+
+    const fkSheet = workbook.Sheets['KHOINGOAI']
+    const rawFK = fkSheet ? XLSX.utils.sheet_to_json(fkSheet, { header: 1 }) as any[][] : []
+
+    const fkData: StockRow[] = rawFK.slice(2).map(row => ({
+  symbol: sheetName,
+  date: parseDate(row[0]) || '',
+  foreign_buy_volume: parseNumber(row[4]) || 0,
+  foreign_buy_value: parseNumber(row[5]) || 0,
+  foreign_sell_volume: parseNumber(row[6]) || 0,
+  foreign_sell_value: parseNumber(row[7]) || 0,
+  user_id: userId
+}))
+
+    const merged = mergeBySymbolDate([mainData, fkData])
+    allMergedEntries.push(...merged.filter(r => r.date && r.symbol))
   }
 
-  const handleImport = async () => {
-    if (!entries.length) return
-    setLoading(true)
+  setEntries(allMergedEntries)
+  setMessage(`📄 Đã đọc được ${allMergedEntries.length} dòng từ ${sheets.length - 2} mã cổ phiếu.`)
+}
 
-    const { data: existing } = await supabase.from('stock_entries').select('date, symbol')
-    const existingKeys = new Set((existing as any[]).map((r) => `${r.symbol}-${r.date}`)) 
-    const updatedCount = entries.filter(row => existingKeys.has(`${row.symbol}-${row.date}`)).length
-    const oldCount = entries.filter(row => new Date(row.date) < new Date('2020-01-01')).length
+const handleImport = async () => {
+  if (!entries.length) return
+  setLoading(true)
 
-    const { data: userData } = await supabase.auth.getUser()
-    const userId = userData?.user?.id
-    if (!userId) return setMessage('❌ Không tìm thấy user.')
+  const { data: existing } = await supabase.from('stock_entries').select('date, symbol')
+  const existingKeys = new Set((existing as any[]).map((r) => `${r.symbol}-${r.date}`))
+  const updatedCount = entries.filter(row => existingKeys.has(`${row.symbol}-${row.date}`)).length
+  const oldCount = entries.filter(row => new Date(row.date) < new Date('2020-01-01')).length
 
-    const rowsWithUser = entries.map(row => ({ ...row, user_id: userId }))
+  const { data: { user } } = await supabase.auth.getUser()
+  const user_id: string = user?.id || ''
+  if (!user_id) return setMessage('❌ Không tìm thấy user.')
 
-    const { error } = await supabase.from('stock_entries').upsert(rowsWithUser, {
-       onConflict: 'user_id,date,symbol'
-    })
+  const rowsWithUser = entries.map(row => ({ ...row, user_id }))
+
+  const { error } = await supabase.from('stock_entries').upsert(rowsWithUser, {
+    onConflict: 'user_id,date,symbol',
+  })
 
     if (error) {
       setMessage(`❌ Lỗi khi import: ${error.message}`)
     } else {
       await supabase.from('import_logs').insert({
-        user_id: userId,
+        user_id: user_id,
         imported_at: new Date().toISOString(),
         type: 'stock',
         total_rows: entries.length,
