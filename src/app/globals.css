@@ -1,0 +1,65 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+@import "tailwindcss";
+
+/* Biến toàn cục: font & màu */
+:root {
+  --font-sans: var(--font-geist-sans);
+  --font-mono: var(--font-geist-mono);
+  --background: #ffffff;
+  --foreground: #171717;
+
+  --color-primary: #6366f1; /* Indigo-500 */
+  --color-secondary: #0ea5e9; /* Sky-500 */
+  --color-accent: #10b981; /* Emerald-500 */
+}
+
+/* Dark mode tự động */
+@media (prefers-color-scheme: dark) {
+  :root {
+    --background: #0a0a0a;
+    --foreground: #ededed;
+  }
+}
+
+/* Body mặc định */
+body {
+  background-color: var(--background);
+  color: var(--foreground);
+  font-family: var(--font-sans), system-ui, sans-serif;
+  margin: 0;
+  padding: 0;
+  line-height: 1.6;
+  min-height: 100vh;
+  transition: background 0.3s, color 0.3s;
+}
+
+/* Scrollbar đẹp */
+::-webkit-scrollbar {
+  width: 8px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: rgba(100, 116, 139, 0.6); /* Slate-500 */
+  border-radius: 4px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(100, 116, 139, 0.8);
+}
+
+/* Nút focus đẹp hơn */
+button, input, textarea, select {
+  outline: none;
+}
+button:focus, input:focus, textarea:focus, select:focus {
+  box-shadow: 0 0 0 2px var(--color-primary);
+}
+
+/* Text selection */
+::selection {
+  background: var(--color-primary);
+  color: white;
+}
