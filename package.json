@@ -4,7 +4,7 @@
   "private": true,
   "scripts": {
     "dev": "next dev",
-    "build": "NEXT_IGNORE_ESLINT=true next build"
+    "build": "tsc --project tsconfig.prod.json && next build"
     "start": "next start",
     "lint": "next lint",
     "generate-signals": "npx ts-node scripts/generateAISignals.ts"
