@@ -24,11 +24,13 @@ export default function Sidebar() {
       const { data } = await supabase.auth.getSession()
       setSession(data.session)
 
-      const { data: listener } = supabase.auth.onAuthStateChange((_event, newSession) => {
-        setSession(newSession)
-      })
+      const { data: listener } = supabase.auth.onAuthStateChange(
+        (_event: string, newSession: Session | null) => {
+          setSession(newSession)
+        }
+      )
 
-      unsubscribe = () => listener?.subscription?.unsubscribe?.()
+      unsubscribe = () => listener.subscription?.unsubscribe?.()
     }
 
     init()
