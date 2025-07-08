@@ -1,6 +1,4 @@
-// src/app/layout.tsx
 import './globals.css'
-import Sidebar from '@/components/Sidebar'
 import type { Metadata } from 'next'
 import { Inter } from 'next/font/google'
 
@@ -14,12 +12,7 @@ export const metadata: Metadata = {
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="vi">
-      <body className={inter.className}>
-        <div className="flex min-h-screen bg-gradient-to-br from-[#0F172A] to-[#1E293B] text-white">
-          <Sidebar />
-          <main className="flex-1 p-6">{children}</main>
-        </div>
-      </body>
+      <body className={inter.className}>{children}</body>
     </html>
   )
 }

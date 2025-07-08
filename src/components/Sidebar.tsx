@@ -2,31 +2,35 @@
 
 import { useState, useEffect } from 'react'
 import { usePathname, useRouter } from 'next/navigation'
-import type { Session } from '@supabase/supabase-js'
+import { supabase } from '@/lib/supabase'
+import { Session } from '@supabase/supabase-js'
 
 const getSupabaseClient = () => import('@/lib/supabase').then(mod => mod.supabase)
 
 export default function Sidebar() {
   const [open, setOpen] = useState(true)
   const [session, setSession] = useState<Session | null>(null)
+  const [isLoading, setIsLoading] = useState(true)
   const [showAnalysisMenu, setShowAnalysisMenu] = useState(false)
 
   const router = useRouter()
   const pathname = usePathname()
 
   useEffect(() => {
-    let supabase: any
+    let supabaseClient: any
     let unsubscribe: () => void
 
     const init = async () => {
-      supabase = await getSupabaseClient()
+      supabaseClient = await getSupabaseClient()
 
-      const { data } = await supabase.auth.getSession()
+      const { data } = await supabaseClient.auth.getSession()
       setSession(data.session)
+      setIsLoading(false)
 
-      const { data: listener } = supabase.auth.onAuthStateChange(
+      const { data: listener } = supabaseClient.auth.onAuthStateChange(
         (_event: string, newSession: Session | null) => {
           setSession(newSession)
+          router.refresh()
         }
       )
 
@@ -38,17 +42,18 @@ export default function Sidebar() {
     return () => {
       unsubscribe?.()
     }
-  }, [])
+  }, [router])
 
   const handleLogout = async () => {
-    const supabase = await getSupabaseClient()
-    await supabase.auth.signOut()
+    const supabaseClient = await getSupabaseClient()
+    await supabaseClient.auth.signOut()
     router.push('/login')
     router.refresh()
   }
 
   const isActive = (path: string) => pathname === path
 
+  if (isLoading) return null
   if (!session) return null
 
   return (
