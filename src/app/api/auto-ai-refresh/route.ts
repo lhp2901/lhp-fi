@@ -4,7 +4,7 @@ import { createClient } from '@supabase/supabase-js'
 export async function POST() {
   const supabase = createClient(
   process.env.SUPABASE_URL!,
-  process.env.SUPABASE_KEY!
+  process.env.SUPABASE_ANON_KEY!
 )
   try {
     console.log('🧹 Đang xoá toàn bộ ai_signals...')
