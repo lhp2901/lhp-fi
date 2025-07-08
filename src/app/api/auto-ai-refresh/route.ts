@@ -2,18 +2,17 @@ import { NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
 
 export async function POST() {
+  const supabase = createClient(
+  process.env.SUPABASE_URL!,
+  process.env.SUPABASE_KEY!
+)
   try {
     console.log('🧹 Đang xoá toàn bộ ai_signals...')
-
-    const supabase = createClient(
-      process.env.SUPABASE_URL!,
-      process.env.SUPABASE_ANON_KEY!
-    )
 
     const { error } = await supabase
       .from('ai_signals')
       .delete()
-      .not('id', 'is', null)
+      .not('id', 'is', null) // ← Xoá an toàn cho UUID
 
     if (error) {
       throw new Error(`Lỗi xoá: ${error.message}`)
