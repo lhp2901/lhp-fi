@@ -2,8 +2,9 @@
 
 import { useState, useEffect } from 'react'
 import { usePathname, useRouter } from 'next/navigation'
-import { supabase } from '@/lib/supabase'
-import { Session } from '@supabase/supabase-js'
+import type { Session } from '@supabase/supabase-js'
+
+const getSupabaseClient = () => import('@/lib/supabase').then(mod => mod.supabase)
 
 export default function Sidebar() {
   const [open, setOpen] = useState(true)
@@ -14,22 +15,31 @@ export default function Sidebar() {
   const pathname = usePathname()
 
   useEffect(() => {
-    const getSession = async () => {
+    let supabase: any
+    let unsubscribe: () => void
+
+    const init = async () => {
+      supabase = await getSupabaseClient()
+
       const { data } = await supabase.auth.getSession()
       setSession(data.session)
-    }
-    getSession()
 
-    const { data: listener } = supabase.auth.onAuthStateChange((_event, newSession) => {
-      setSession(newSession)
-    })
+      const { data: listener } = supabase.auth.onAuthStateChange((_event, newSession) => {
+        setSession(newSession)
+      })
+
+      unsubscribe = () => listener?.subscription?.unsubscribe?.()
+    }
+
+    init()
 
     return () => {
-      listener.subscription.unsubscribe()
+      unsubscribe?.()
     }
   }, [])
 
   const handleLogout = async () => {
+    const supabase = await getSupabaseClient()
     await supabase.auth.signOut()
     router.push('/login')
     router.refresh()
@@ -47,7 +57,6 @@ export default function Sidebar() {
         </button>
 
         <nav className="space-y-2">
-          {/* Dashboard */}
           <button
             onClick={() => router.push('/')}
             className={`w-full text-left px-3 py-2 rounded-md text-sm font-medium transition ${
@@ -57,7 +66,6 @@ export default function Sidebar() {
             {open ? '📊 Dashboard' : '📊'}
           </button>
 
-          {/* Phân tích (Dropdown) */}
           <div>
             <button
               onClick={() => setShowAnalysisMenu(!showAnalysisMenu)}
@@ -86,12 +94,10 @@ export default function Sidebar() {
                 >
                   • Thị Trường
                 </button>
-
               </div>
             )}
           </div>
 
-          {/* Cài đặt */}
           <button
             onClick={() => router.push('/settings')}
             className={`w-full text-left px-3 py-2 rounded-md text-sm font-medium transition ${
