@@ -4,7 +4,7 @@ import { SMA, RSI, BollingerBands } from 'technicalindicators'
 
 const supabase = createClient(
   process.env.SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY!
+  process.env.SUPABASE_KEY!
 )
 
 const fixNull = (v: any) => (v === null || v === undefined ? 0 : v)
@@ -39,13 +39,12 @@ function calculateIndicators(data: any[]) {
   }
 }
 
-function labelData(data: any[], indicators: any) {
+function enrichData(data: any[], indicators: any) {
   const { ma20, rsi, bb } = indicators
   const startIdx = data.length - ma20.length
+  const rows = []
 
-  const labeled = []
-
-  for (let i = startIdx; i < data.length - 3; i++) {
+  for (let i = startIdx; i < data.length; i++) {
     const row = data[i]
     const future = data[i + 3]
 
@@ -53,25 +52,25 @@ function labelData(data: any[], indicators: any) {
       ? (future.close - row.close) / row.close
       : null
 
-    labeled.push({
-      ...row,
+    const label = typeof gain === 'number' ? gain > 0.03 : null
+
+    rows.push({
+      symbol: row.symbol,
+      date: row.date,
+      close: fixNull(row.close),
+      volume: fixNull(row.volume),
       ma20: ma20[i - startIdx],
       rsi: rsi[i - startIdx],
       bb_upper: bb[i - startIdx]?.upper ?? 0,
       bb_lower: bb[i - startIdx]?.lower ?? 0,
-      future_gain_3d: gain ?? 0,
-      label_win: typeof gain === 'number' ? gain > 0.03 : null,
-
-      close: fixNull(row.close),
-      volume: fixNull(row.volume),
       foreign_buy_value: fixNull(row.foreign_buy_value),
       foreign_sell_value: fixNull(row.foreign_sell_value),
+      future_gain_3d: gain,
+      label_win: label
     })
   }
 
-  const filtered = labeled.filter((r) => typeof r.label_win === 'boolean')
-  console.log(`🔍 ${filtered.length}/${data.length} dòng có label_win sẵn sàng huấn luyện`)
-  return filtered
+  return rows
 }
 
 async function insertAISignals(rows: any[]) {
@@ -98,6 +97,7 @@ async function insertAISignals(rows: any[]) {
     if (!error) successCount++
     else console.error(`❌ Lỗi insert ${row.symbol} ngày ${row.date}:`, error.message)
   }
+
   console.log(`✅ Ghi thành công ${successCount}/${rows.length} dòng vào bảng ai_signals.`)
 }
 
@@ -116,9 +116,10 @@ export async function POST() {
       }
 
       const indicators = calculateIndicators(raw)
-      const labeled = labelData(raw, indicators)
-      await insertAISignals(labeled)
-      console.log(`✅ Done: ${symbol} (${labeled.length} dòng)`)
+      const labeledRows = enrichData(raw, indicators)
+      await insertAISignals(labeledRows)
+
+      console.log(`✅ Done: ${symbol} (${labeledRows.length} dòng)`)
     }
 
     console.log('🎯 Đã xử lý toàn bộ symbol.')

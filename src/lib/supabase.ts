@@ -1,11 +1,8 @@
-// src/lib/supabase/server.ts
-import { createClient } from '@supabase/supabase-js'
+'use client'
 
-const supabaseUrl = process.env.SUPABASE_URL
-const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY
+import { createBrowserClient } from '@supabase/ssr'
 
-if (!supabaseUrl || !supabaseServiceKey) {
-  throw new Error('Missing SUPABASE_URL or SUPABASE_SERVICE_ROLE_KEY')
-}
-
-export const supabaseServer = createClient(supabaseUrl, supabaseServiceKey)
+export const supabase = createBrowserClient(
+  process.env.NEXT_PUBLIC_SUPABASE_URL!,
+  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+)

@@ -5,27 +5,65 @@ import { supabase } from '@/lib/supabase'
 import { Button } from '@/components/ui/button'
 import BasicAnalysisPanel from '@/components/stocks/BasicAnalysisPanel'
 import AIAnalysisPanel from '@/components/stocks/AIAnalysisPanel'
+import PortfolioTable from '@/components/stocks/PortfolioTable'
+import type { PortfolioItem } from '@/components/stocks/PortfolioTable'
 
 export default function AnalysisPage() {
   const [symbol, setSymbol] = useState('')
   const [symbols, setSymbols] = useState<string[]>([])
   const [tab, setTab] = useState<'basic' | 'ai'>('basic')
+  const [portfolio, setPortfolio] = useState<PortfolioItem[]>([])
+  const [portfolioDate, setPortfolioDate] = useState('')
+  const [loadingPortfolio, setLoadingPortfolio] = useState(true)
 
   useEffect(() => {
     const fetchSymbols = async () => {
-      const { data } = await supabase.from('stock_entries').select('symbol').neq('symbol', null)
+      const { data, error } = await supabase
+        .from('stock_entries')
+        .select('symbol')
+        .neq('symbol', null)
+
+      if (error) {
+        console.error('❌ Lỗi lấy danh sách mã:', error.message)
+        return
+      }
+
       if (data) {
         const unique = Array.from(new Set(data.map((item) => item.symbol)))
         setSymbols(unique)
-        setSymbol(unique[0])
+        if (!symbol && unique.length > 0) setSymbol(unique[0])
       }
     }
+
+    const fetchPortfolio = async () => {
+      try {
+        const res = await fetch('/api/portfolio')
+        const json = await res.json()
+        if (res.ok) {
+          setPortfolio(json.portfolio)
+          setPortfolioDate(json.date)
+        } else {
+          console.warn('⚠️ Lỗi response từ API portfolio:', json)
+        }
+      } catch (err) {
+        console.error('❌ Lỗi kết nối đến API portfolio:', err)
+      } finally {
+        setLoadingPortfolio(false)
+      }
+    }
+
     fetchSymbols()
+    fetchPortfolio()
   }, [])
 
   return (
     <div className="min-h-screen w-full px-4 md:px-8 py-6 space-y-6 bg-gradient-to-b from-black to-slate-900 text-white">
-      <h1 className="text-2xl font-bold mb-4">📈 Phân tích cổ phiếu AI</h1>
+      <div className="flex justify-between items-center mb-6">
+        <h1 className="text-2xl font-bold">📈 Phân tích cổ phiếu AI</h1>
+        {portfolioDate && (
+          <span className="text-sm text-gray-300">Dữ liệu AI ngày: {portfolioDate}</span>
+        )}
+      </div>
 
       <div className="flex items-center space-x-4 mb-4">
         <label className="text-sm font-medium">Chọn cổ phiếu:</label>
@@ -52,7 +90,10 @@ export default function AnalysisPage() {
       {tab === 'basic' ? (
         <BasicAnalysisPanel symbol={symbol} />
       ) : (
-        <AIAnalysisPanel symbol={symbol} />
+        <>
+          <AIAnalysisPanel symbol={symbol} />
+          <PortfolioTable portfolio={portfolio} date={portfolioDate} loading={loadingPortfolio} />
+        </>
       )}
     </div>
   )
