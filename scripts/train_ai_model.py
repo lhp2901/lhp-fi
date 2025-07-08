@@ -14,7 +14,7 @@ load_dotenv()
 # 🔗 Kết nối Supabase
 supabase: Client = create_client(
     os.getenv("SUPABASE_URL"),
-    os.getenv("SUPABASE_KEY")
+    os.getenv("SUPABASE_ANON_KEY")
 )
 
 def fetch_data():

@@ -8,7 +8,7 @@ import * as fs from 'fs'
 
 const supabase = createClient(
   process.env.SUPABASE_URL!,
-  process.env.SUPABASE_KEY!
+  process.env.SUPABASE_ANON_KEY!
 )
 
 const MAX_OUTPUT_SIZE = 1_000_000
