@@ -5,6 +5,8 @@ import { useRouter } from 'next/navigation'
 import { supabase } from '@/lib/supabase'
 import AnalysisPage from './analysis/stocks/page'
 import MarketAnalysisPage from './analysis/market-analysis/page'
+import TransactionTable from '@/components/portfolio/TransactionTable'
+import AddTransactionForm from '@/components/portfolio/AddTransactionForm'
 
 const quotes = [
   'Đừng bao giờ đặt tất cả trứng vào cùng một giỏ.',
@@ -17,7 +19,9 @@ const quotes = [
 export default function HomePage() {
   const [userName, setUserName] = useState('')
   const [loading, setLoading] = useState(true)
-  const [activeTab, setActiveTab] = useState<'dashboard' | 'analysis' | 'market'>('dashboard')
+  const [activeTab, setActiveTab] = useState<'dashboard' | 'analysis' | 'market' | 'portfolio'>('dashboard')
+  const [transactions, setTransactions] = useState<any[]>([])
+  const [showForm, setShowForm] = useState(false)
 
   const router = useRouter()
 
@@ -37,6 +41,20 @@ export default function HomePage() {
     fetchUser()
   }, [router])
 
+  const fetchTransactions = async () => {
+    const { data } = await supabase
+      .from('portfolio_transactions')
+      .select('*')
+      .order('created_at', { ascending: false })
+    setTransactions(data || [])
+  }
+
+  useEffect(() => {
+    if (activeTab === 'portfolio') {
+      fetchTransactions()
+    }
+  }, [activeTab])
+
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-black text-white">
@@ -49,25 +67,26 @@ export default function HomePage() {
     <div className="space-y-6">
       {/* Marquee câu châm ngôn */}
       <div className="relative w-full h-10 overflow-hidden bg-black rounded-md border border-gray-700">
-  <div
-    className="absolute whitespace-nowrap text-white font-semibold text-lg animate-marquee"
-    style={{ animationDuration: '20s' }}
-    aria-label="Câu châm ngôn tài chính"
-  >
-    {quotes.map((quote, idx) => (
-      <span key={idx} className="mr-10">
-        {quote}
-      </span>
-    ))}
-  </div>
-</div>
+        <div
+          className="absolute whitespace-nowrap text-white font-semibold text-lg animate-marquee"
+          style={{ animationDuration: '20s' }}
+          aria-label="Câu châm ngôn tài chính"
+        >
+          {quotes.map((quote, idx) => (
+            <span key={idx} className="mr-10">
+              {quote}
+            </span>
+          ))}
+        </div>
+      </div>
 
+      {/* Tabs */}
       <div className="flex gap-3 flex-wrap mb-4">
         {[
           { key: 'dashboard', label: '📊 Dashboard' },
           { key: 'market', label: '🌏 Thị Trường' },
           { key: 'analysis', label: '📈 Cổ phiếu' },
-          
+          { key: 'portfolio', label: '💼 Giao dịch' },
         ].map((tab) => (
           <button
             key={tab.key}
@@ -83,6 +102,7 @@ export default function HomePage() {
         ))}
       </div>
 
+      {/* Tab content */}
       {activeTab === 'dashboard' && (
         <section className="text-slate-400 border border-white/10 p-4 rounded-xl bg-white/5">
           <h2 className="text-lg font-semibold text-teal-300 mb-2">📊 Tổng quan tài chính</h2>
@@ -101,7 +121,31 @@ export default function HomePage() {
           <AnalysisPage />
         </section>
       )}
-      
+
+      {activeTab === 'portfolio' && (
+        <section className="space-y-6 mt-4">
+          <div className="bg-white/5 border border-white/10 rounded-xl p-4">
+            <div className="flex items-center justify-between mb-4">
+              <h2 className="text-lg font-semibold text-teal-300">📋 Lịch sử giao dịch</h2>
+              <button
+                onClick={() => setShowForm(!showForm)}
+                className="text-blue-400 hover:underline"
+              >
+                {showForm ? '− Ẩn nhập liệu' : '+ Thêm giao dịch mới'}
+              </button>
+            </div>
+
+            <TransactionTable transactions={transactions} onRefresh={fetchTransactions} />
+
+            {showForm && (
+              <div className="mt-6 border-t border-white/10 pt-6">
+                <h2 className="text-base font-medium text-blue-300 mb-4">📝 Nhập liệu giao dịch</h2>
+                <AddTransactionForm onSaved={fetchTransactions} />
+              </div>
+            )}
+          </div>
+        </section>
+      )}
     </div>
   )
 }
