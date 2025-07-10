@@ -86,12 +86,20 @@ export default function Sidebar() {
                 >
                   • Thị Trường
                 </button>
-
+               
               </div>
             )}
           </div>
-
+                <button
+            onClick={() => router.push('/portfolio')}
+            className={`w-full text-left px-3 py-2 rounded-md text-sm font-medium transition ${
+              isActive('/portfolio') ? 'bg-indigo-600 text-white' : 'text-slate-200 hover:bg-white/10'
+            }`}
+          >
+            {open ? '🎯 Giao dịch' : '🎯'}
+              </button>
           {/* Cài đặt */}
+          
           <button
             onClick={() => router.push('/settings')}
             className={`w-full text-left px-3 py-2 rounded-md text-sm font-medium transition ${

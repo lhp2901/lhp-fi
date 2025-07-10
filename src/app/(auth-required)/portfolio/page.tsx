@@ -82,17 +82,24 @@ export default function PortfolioPage() {
 
   return (
     <div className="p-6 space-y-6">
-      <div className="bg-white/5 border border-white/10 p-4 rounded-xl">
-        {/* Tiêu đề + nút toggle */}
-        <div className="flex items-center justify-between mb-4">
-          <h1 className="text-xl font-semibold text-teal-400">📋 Lịch sử giao dịch</h1>
-          <button
-            onClick={() => setShowForm(!showForm)}
-            className="text-blue-400 hover:underline"
-          >
-            {showForm ? '− Ẩn nhập liệu' : '+ Thêm giao dịch mới'}
-          </button>
-        </div>
+      <div className="bg-white/5 border border-white/10 rounded-xl p-4">
+            <div className="flex items-center justify-between mb-4">
+            <h2 className="text-lg font-semibold text-teal-300">📋 Lịch sử giao dịch</h2>
+            <div className="flex gap-4 items-center">
+              <button
+                onClick={() => setShowForm(!showForm)}
+                className="text-blue-400 hover:underline"
+              >
+                {showForm ? '− Ẩn nhập liệu' : '+ Thêm giao dịch mới'}
+              </button>
+              <a
+                href="/portfolio/dashboard"
+                className="text-yellow-400 hover:underline text-sm flex items-center gap-1"
+              >
+                📊 Xem báo cáo
+              </a>
+            </div>
+          </div>
 
         {/* Chỉnh sửa hoặc hiển thị danh sách */}
         {editingTx ? (
