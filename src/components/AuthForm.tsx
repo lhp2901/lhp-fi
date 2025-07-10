@@ -30,8 +30,12 @@ export default function AuthForm({ title, buttonLabel, isRegister }: Props) {
           email,
           password,
           options: {
-            data: { full_name: fullName },
-            emailRedirectTo: 'http://localhost:3000/auth/callback',
+            data: {
+              full_name: fullName,
+              avatar: `https://ui-avatars.com/api/?name=${encodeURIComponent(fullName)}`,
+              phone_number: '', // có thể thêm input nếu muốn
+            },
+            emailRedirectTo: 'https://lhp-fi.vercel.app/auth/callback',
           },
         })
 
