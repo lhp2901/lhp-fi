@@ -32,12 +32,13 @@ export default function TransactionList({
   return (
     <div className="space-y-4">
       {transactions.map((tx) => {
-        const isSold = tx.issold
-        const currentPrice = isSold && tx.sellprice ? tx.sellprice : tx.currentprice
-        const pnl = calculatePnL(tx.buyprice, currentPrice, tx.quantity)
-        const pnlPercent = calculatePnLPercentage(tx.buyprice, currentPrice)
-        const isProfit = pnl >= 0
-        const totalInvested = tx.quantity * tx.buyprice
+      const isSold = tx.issold
+      const currentPrice = isSold && tx.sellprice ? tx.sellprice : tx.currentprice
+      const pnl = calculatePnL(tx.buyprice, currentPrice, tx.quantity)
+      const pnlPercent = calculatePnLPercentage(tx.buyprice, currentPrice)
+      const isProfit = pnl >= 0
+      const totalInvested = tx.quantity * tx.buyprice
+      const totalFee = tx.transactionfee + (tx.sellfee || 0) 
 
         return (
           <div key={tx.id} className="bg-zinc-900 rounded-xl p-4 shadow-md text-white">
@@ -62,31 +63,31 @@ export default function TransactionList({
             </div>
 
             <div className="text-sm text-gray-300 space-y-1">
-              <div className="text-yellow-300 font-semibold">
-                💰 Tổng đầu tư: {formatNumber(totalInvested)} đ
-              </div>
-              <div>💸 Giá mua: {formatNumber(tx.buyprice)} đ</div>
-              <div>
-                📈 Giá {isSold ? 'bán' : 'hiện tại'}:{' '}
-                <span className={isProfit ? 'text-green-400' : 'text-red-400'}>
-                  {formatNumber(currentPrice)} đ
-                </span>
-              </div>
-              <div>🔢 Khối lượng: {formatNumber(tx.quantity)}</div>
-              <div>💸 Phí: {formatNumber(tx.transactionfee)} đ</div>
-              <div>
-                📊 Lãi/lỗ:{' '}
-                <span className={isProfit ? 'text-green-400' : 'text-red-400'}>
-                  {formatNumber(pnl)} đ ({formatPercent(pnlPercent)})
-                </span>
-              </div>
-              <div>📌 Trạng thái: {isSold ? '✅ Đã bán' : '🕒 Đang nắm giữ'}</div>
-              <div>🧠 Chiến lược: {tx.strategy || '—'}</div>
-              <div>📝 Ghi chú: {tx.note || '—'}</div>
-            </div>
-          </div>
-        )
-      })}
+        <div className="text-yellow-300 font-semibold">
+          💰 Tổng đầu tư: {formatNumber(totalInvested)} đ
+        </div>
+        <div>💸 Giá mua: {formatNumber(tx.buyprice)} đ</div>
+        <div>
+          📈 Giá {isSold ? 'bán' : 'hiện tại'}:{' '}
+          <span className={isProfit ? 'text-green-400' : 'text-red-400'}>
+            {formatNumber(currentPrice)} đ
+          </span>
+        </div>
+        <div>🔢 Khối lượng: {formatNumber(tx.quantity)}</div>
+        <div className="text-blue-400">💸 Phí: {formatNumber(totalFee)} đ</div> {/* ✅ hiển thị phí đầy đủ */}
+        <div>
+          📊 Lãi/lỗ:{' '}
+          <span className={isProfit ? 'text-green-400' : 'text-red-400'}>
+            {formatNumber(pnl)} đ ({formatPercent(pnlPercent)})
+          </span>
+        </div>
+        <div>📌 Trạng thái: {isSold ? '✅ Đã bán' : '🕒 Đang nắm giữ'}</div>
+        <div>🧠 Chiến lược: {tx.strategy || '—'}</div>
+        <div className="text-orange-500">📝 Ghi chú: {tx.note || '—'}</div>
+      </div>
+    </div>
+      )
+    })}
     </div>
   )
 }

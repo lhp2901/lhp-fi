@@ -14,7 +14,7 @@ import {
 } from '@/lib/utils'
 
 type FormData = {
-  id?: string
+  
   assetname: string
   category: string
   quantity: string
@@ -29,6 +29,37 @@ type FormData = {
   issold: boolean
   sellprice: string
   sellfee: string
+  feepreset: string
+}
+
+const feePresets: Record<
+  string,
+  { rate: number; label: string; icon: string; description: string }
+> = {
+  TCBS: {
+    rate: 0.0015,
+    label: 'TCBS',
+    icon: '🏦',
+    description: 'TCBS - Cổ phiếu, phí 0.15%',
+  },
+  HSC: {
+    rate: 0.0015,
+    label: 'HSC',
+    icon: '🏛️',
+    description: 'HSC - Cổ phiếu, phí 0.15%',
+  },
+  OKX: {
+    rate: 0.002,
+    label: 'OKX',
+    icon: '🌐',
+    description: 'OKX - Crypto, phí 0.2%',
+  },
+  Binance: {
+    rate: 0.001,
+    label: 'Binance',
+    icon: '🐉',
+    description: 'Binance - Crypto, phí 0.1%',
+  },
 }
 
 const emptyForm: FormData = {
@@ -46,6 +77,7 @@ const emptyForm: FormData = {
   issold: false,
   sellprice: '',
   sellfee: '',
+  feepreset: 'TCBS',
 }
 
 export default function EditTransactionForm({
@@ -68,6 +100,7 @@ export default function EditTransactionForm({
     tags: Array.isArray(initial?.tags) ? initial.tags.join(', ') : initial?.tags || '',
     highconviction: !!initial?.highconviction,
     issold: !!initial?.issold,
+    feepreset: initial?.feePreset || 'TCBS',
   }
 
   const [form, setForm] = useState<FormData>(safeInitial)
@@ -76,13 +109,23 @@ export default function EditTransactionForm({
   const quantity = parseNumber(form.quantity)
   const buyprice = parseNumber(form.buyprice)
   const currentprice = parseNumber(form.currentprice)
-  const sellprice = parseNumber(form.sellprice)
-  const feeRate =
-    form.category === 'Crypto' ? 0.002 : form.category === 'VN30F1M' ? 0.0004 : 0.0015
+  const feeRate = feePresets[form.feepreset]?.rate || 0.0015
   const transactionfee = calculateFee(quantity, buyprice, feeRate)
-
   const pnl = calculatePnL(buyprice, currentprice, quantity)
   const pnlPercent = calculatePnLPercentage(buyprice, currentprice)
+
+  useEffect(() => {
+    if (form.issold) {
+      const qty = parseNumber(form.quantity)
+      const sellP = parseNumber(form.currentprice)
+      const sellFee = calculateFee(qty, sellP, feeRate)
+      setForm(prev => ({
+        ...prev,
+        sellprice: formatNumber(sellP),
+        sellfee: formatNumber(sellFee),
+      }))
+    }
+  }, [form.issold, form.currentprice, form.quantity, form.feepreset])
 
   const handleChange = (
     e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>
@@ -91,7 +134,7 @@ export default function EditTransactionForm({
     const newValue =
       type === 'checkbox' && 'checked' in e.target
         ? (e.target as HTMLInputElement).checked
-        : ['buyprice', 'quantity', 'currentprice', 'sellprice', 'sellfee'].includes(name)
+        : ['buyprice', 'quantity', 'currentprice'].includes(name)
         ? formatNumber(parseNumber(value))
         : value
 
@@ -100,18 +143,6 @@ export default function EditTransactionForm({
       [name]: newValue,
     }))
   }
-
-  useEffect(() => {
-    if (form.issold && !form.sellfee && form.sellprice) {
-      const qty = parseNumber(form.quantity)
-      const sellP = parseNumber(form.sellprice)
-      const sellFee = calculateFee(qty, sellP, feeRate)
-      setForm(prev => ({
-        ...prev,
-        sellfee: formatNumber(sellFee),
-      }))
-    }
-  }, [form.sellprice, form.issold])
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -192,15 +223,44 @@ export default function EditTransactionForm({
             className="w-full p-2 rounded bg-zinc-700 text-white text-right"
           />
         </div>
+      </div>
 
-        <div className="text-sm text-green-400">
-          Lãi/lỗ tạm tính: {formatNumber(pnl)} đ ({formatPercent(pnlPercent)})
+      <div>
+        <label className="text-sm text-gray-400">🏦 Sàn giao dịch (preset phí)</label>
+        <div className="flex flex-wrap gap-2 mt-1">
+          {Object.entries(feePresets).map(([key, { icon, label, description }]) => (
+            <button
+              key={key}
+              type="button"
+              onClick={() => setForm(prev => ({ ...prev, feepreset: key }))}
+              title={description}
+              className={`px-3 py-1 rounded-full border text-sm flex items-center gap-1 transition 
+                ${form.feepreset === key 
+                  ? 'bg-yellow-300 text-black font-bold border-yellow-400' 
+                  : 'border-gray-600 text-gray-300 hover:bg-zinc-700'}
+              `}
+            >
+              <span>{icon}</span> {label}
+            </button>
+          ))}
         </div>
+      </div>
 
-        <div className="text-sm text-yellow-300">
-          Phí giao dịch: {formatNumber(transactionfee)} đ
+      <div className="text-sm text-green-400">
+        📈 Lãi/lỗ tạm tính: {formatNumber(pnl)} đ ({formatPercent(pnlPercent)})
+      </div>
+
+      <div className="text-sm text-yellow-300">
+        💸 Phí mua: {formatNumber(transactionfee)} đ ({formatPercent(feeRate)})
+      </div>
+
+      {form.issold && (
+        <div className="text-sm text-pink-300">
+          ✅ Đã bán tại giá hiện tại {form.currentprice}, phí bán: {form.sellfee} đ
         </div>
+      )}
 
+      <div className="grid grid-cols-2 gap-4">
         <div>
           <label className="text-sm text-gray-400">Chiến lược</label>
           <input
@@ -210,7 +270,6 @@ export default function EditTransactionForm({
             className="w-full p-2 rounded bg-zinc-700 text-white"
           />
         </div>
-
         <div>
           <label className="text-sm text-gray-400">Tags</label>
           <input
@@ -220,7 +279,6 @@ export default function EditTransactionForm({
             className="w-full p-2 rounded bg-zinc-700 text-white"
           />
         </div>
-
         <div>
           <label className="text-sm text-gray-400">Nguồn</label>
           <input
@@ -230,7 +288,6 @@ export default function EditTransactionForm({
             className="w-full p-2 rounded bg-zinc-700 text-white"
           />
         </div>
-
         <div>
           <label className="text-sm text-gray-400">Ngày mua</label>
           <input
@@ -288,29 +345,6 @@ export default function EditTransactionForm({
           Đã bán
         </label>
       </div>
-
-      {form.issold && (
-        <div className="grid grid-cols-2 gap-4">
-          <div>
-            <label className="text-sm text-gray-400">Giá bán</label>
-            <input
-              name="sellprice"
-              value={form.sellprice}
-              onChange={handleChange}
-              className="w-full p-2 rounded bg-zinc-700 text-white text-right"
-            />
-          </div>
-          <div>
-            <label className="text-sm text-gray-400">Phí bán</label>
-            <input
-              name="sellfee"
-              value={form.sellfee}
-              onChange={handleChange}
-              className="w-full p-2 rounded bg-zinc-700 text-white text-right"
-            />
-          </div>
-        </div>
-      )}
 
       <div className="flex gap-3 mt-4">
         <button

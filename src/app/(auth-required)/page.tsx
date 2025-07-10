@@ -140,14 +140,22 @@ export default function HomePage() {
         <section className="space-y-6 mt-4">
           <div className="bg-white/5 border border-white/10 rounded-xl p-4">
             <div className="flex items-center justify-between mb-4">
-              <h2 className="text-lg font-semibold text-teal-300">📋 Lịch sử giao dịch</h2>
+            <h2 className="text-lg font-semibold text-teal-300">📋 Lịch sử giao dịch</h2>
+            <div className="flex gap-4 items-center">
               <button
                 onClick={() => setShowForm(!showForm)}
                 className="text-blue-400 hover:underline"
               >
                 {showForm ? '− Ẩn nhập liệu' : '+ Thêm giao dịch mới'}
               </button>
+              <a
+                href="/portfolio/dashboard"
+                className="text-yellow-400 hover:underline text-sm flex items-center gap-1"
+              >
+                📊 Xem báo cáo
+              </a>
             </div>
+          </div>
 
             {editingTx ? (
               <EditTransactionForm

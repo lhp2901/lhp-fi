@@ -19,6 +19,33 @@ const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
 )
 
+const feePresets: Record<string, { rate: number; label: string; icon: string; description: string }> = {
+  TCBS: {
+    rate: 0.0015,
+    label: 'TCBS',
+    icon: '🏦',
+    description: 'TCBS - Cổ phiếu, phí 0.15%',
+  },
+  HSC: {
+    rate: 0.0015,
+    label: 'HSC',
+    icon: '🏛️',
+    description: 'HSC - Cổ phiếu, phí 0.15%',
+  },
+  OKX: {
+    rate: 0.002,
+    label: 'OKX',
+    icon: '🌐',
+    description: 'OKX - Crypto, phí 0.2%',
+  },
+  Binance: {
+    rate: 0.001,
+    label: 'Binance',
+    icon: '🐉',
+    description: 'Binance - Crypto, phí 0.1%',
+  },
+}
+
 const emptyForm = {
   assetname: '',
   category: '',
@@ -31,9 +58,7 @@ const emptyForm = {
   tags: '',
   source: '',
   highconviction: false,
-  issold: false,
-  sellprice: '',
-  sellfee: '',
+  feePreset: 'TCBS', // Mặc định theo TCBS
 }
 
 export default function AddTransactionForm({ onSaved }: { onSaved?: () => void }) {
@@ -43,11 +68,9 @@ export default function AddTransactionForm({ onSaved }: { onSaved?: () => void }
   const quantity = parseNumber(form.quantity)
   const buyprice = parseNumber(form.buyprice)
   const currentprice = parseNumber(form.currentprice)
-  const sellprice = parseNumber(form.sellprice)
-  const sellfee = parseNumber(form.sellfee)
 
-  const feeRate =
-    form.category === 'Crypto' ? 0.002 : form.category === 'VN30F1M' ? 0.0004 : 0.0015
+  const feePresetObj = feePresets[form.feePreset]
+  const feeRate = typeof feePresetObj === 'number' ? feePresetObj : feePresetObj?.rate ?? 0.0015
   const transactionfee = calculateFee(quantity, buyprice, feeRate)
   const pnl = calculatePnL(buyprice, currentprice, quantity)
   const pnlPercent = calculatePnLPercentage(buyprice, currentprice)
@@ -81,9 +104,9 @@ export default function AddTransactionForm({ onSaved }: { onSaved?: () => void }
       source: form.source || null,
       highconviction: form.highconviction,
       transactionfee,
-      issold: form.issold,
-      sellprice: form.issold ? sellprice : null,
-      sellfee: form.issold ? sellfee : null,
+      issold: false, // Luôn mặc định false trong form thêm mới
+      sellprice: null,
+      sellfee: null,
     })
 
     setSaving(false)
@@ -123,6 +146,27 @@ export default function AddTransactionForm({ onSaved }: { onSaved?: () => void }
           <option value="VN30F1M">📊 VN30F1M</option>
         </select>
       </div>
+
+      <div>
+      <label className="text-sm text-gray-400">🏦 Sàn giao dịch (preset phí)</label>
+      <div className="flex flex-wrap gap-2 mt-1">
+        {Object.entries(feePresets).map(([key, { icon, label, description }]) => (
+          <button
+            key={key}
+            type="button"
+            onClick={() => setForm((prev) => ({ ...prev, feePreset: key }))}
+            title={description}
+            className={`px-3 py-1 rounded-full border text-sm flex items-center gap-1 transition 
+              ${form.feePreset === key 
+                ? 'bg-yellow-300 text-black font-bold border-yellow-400' 
+                : 'border-gray-600 text-gray-300 hover:bg-zinc-700'}
+            `}
+          >
+            <span>{icon}</span> {label}
+          </button>
+        ))}
+      </div>
+    </div>
 
       <div>
         <label className="text-sm text-gray-400">🔢 Khối lượng</label>
@@ -245,41 +289,6 @@ export default function AddTransactionForm({ onSaved }: { onSaved?: () => void }
         <label className="text-sm text-gray-300">🔥 Tự tin cao</label>
       </div>
 
-      <div className="flex items-center gap-2">
-        <input
-          type="checkbox"
-          name="issold"
-          checked={form.issold}
-          onChange={handleChange}
-        />
-        <label className="text-sm text-gray-300">✅ Đã bán</label>
-      </div>
-
-      {form.issold && (
-        <>
-          <div>
-            <label className="text-sm text-gray-400">💵 Giá bán</label>
-            <input
-              name="sellprice"
-              value={form.sellprice}
-              onChange={handleChange}
-              placeholder="VD: 30.000"
-              className="w-full rounded-md p-2 bg-zinc-800 text-white"
-            />
-          </div>
-          <div>
-            <label className="text-sm text-gray-400">💰 Phí bán</label>
-            <input
-              name="sellfee"
-              value={form.sellfee}
-              onChange={handleChange}
-              placeholder="VD: 10.000"
-              className="w-full rounded-md p-2 bg-zinc-800 text-white"
-            />
-          </div>
-        </>
-      )}
-
       <button
         type="submit"
         disabled={saving}
@@ -290,4 +299,3 @@ export default function AddTransactionForm({ onSaved }: { onSaved?: () => void }
     </form>
   )
 }
-  
