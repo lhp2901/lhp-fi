@@ -52,7 +52,9 @@ export default function AddTransactionForm({ onSaved }: { onSaved?: () => void }
   const pnlPercent = calculatePnLPercentage(buyprice, currentprice)
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
-    const { name, value, type, checked } = e.target
+    const target = e.target as HTMLInputElement
+    const { name, value, type } = target
+    const checked = type === 'checkbox' ? target.checked : undefined
     setForm((prev) => ({
       ...prev,
       [name]: type === 'checkbox' ? checked : value,
@@ -62,15 +64,6 @@ export default function AddTransactionForm({ onSaved }: { onSaved?: () => void }
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     setSaving(true)
-
-    const { data: { user }, error: authError } = await supabase.auth.getUser()
-
-    if (authError || !user) {
-      alert('❌ Bạn chưa đăng nhập hoặc token hết hạn.')
-      setSaving(false)
-      return
-    }
-
     const { error } = await supabase.from('portfolio_transactions').insert({
       assetname: toUpperCaseTrim(form.assetname),
       category: form.category,
@@ -87,7 +80,6 @@ export default function AddTransactionForm({ onSaved }: { onSaved?: () => void }
       issold: form.issold,
       sellprice: form.issold ? sellprice : null,
       sellfee: form.issold ? sellfee : null,
-      user_id: user.id, // BẮT BUỘC
     })
 
     setSaving(false)
@@ -103,7 +95,7 @@ export default function AddTransactionForm({ onSaved }: { onSaved?: () => void }
   return (
     <form onSubmit={handleSubmit} className="space-y-4">
       <div>
-        <label className="text-sm text-gray-400">📌 Mã tài sản</label>
+        <label className="text-sm text-gray-400">📌 Mã tài sản (viết hoa tự động)</label>
         <input
           name="assetname"
           value={form.assetname}
@@ -165,23 +157,23 @@ export default function AddTransactionForm({ onSaved }: { onSaved?: () => void }
         💸 Phí mua: {formatNumber(transactionfee)} đ ({formatPercent(feeRate)})
       </div>
 
-      <div className="text-sm text-gray-400">
-        📈 Lãi/lỗ: {formatNumber(pnl)} đ ({formatPercent(pnlPercent)})
+      <div className="text-sm text-green-400">
+        📈 Lãi/lỗ tạm tính: {formatNumber(pnl)} đ ({formatPercent(pnlPercent)})
       </div>
 
       <div>
-        <label className="text-sm text-gray-400">🧠 Chiến lược</label>
+        <label className="text-sm text-gray-400">🧠 Chiến lược đầu tư (ngắn hạn, tăng trưởng...)</label>
         <input
           name="strategy"
           value={form.strategy}
           onChange={handleChange}
-          placeholder="VD: Dài hạn"
+          placeholder="VD: Dài hạn tích luỹ"
           className="w-full rounded-md p-2 bg-zinc-800 text-white"
         />
       </div>
 
       <div>
-        <label className="text-sm text-gray-400">🏷️ Tags</label>
+        <label className="text-sm text-gray-400">🏷️ Tags phân tích (phân tách bằng dấu phẩy)</label>
         <input
           name="tags"
           value={form.tags}
@@ -192,18 +184,18 @@ export default function AddTransactionForm({ onSaved }: { onSaved?: () => void }
       </div>
 
       <div>
-        <label className="text-sm text-gray-400">📚 Nguồn</label>
+        <label className="text-sm text-gray-400">📚 Nguồn ý tưởng đầu tư (tự nghiên cứu, bạn bè...)</label>
         <input
           name="source"
           value={form.source}
           onChange={handleChange}
-          placeholder="VD: AI gợi ý"
+          placeholder="VD: Cafef, AI gợi ý"
           className="w-full rounded-md p-2 bg-zinc-800 text-white"
         />
       </div>
 
       <div>
-        <label className="text-sm text-gray-400">📝 Ghi chú</label>
+        <label className="text-sm text-gray-400">📓 Ghi chú cảm xúc / cảm nhận</label>
         <textarea
           name="note"
           value={form.note}
@@ -239,7 +231,7 @@ export default function AddTransactionForm({ onSaved }: { onSaved?: () => void }
 
       <div className="flex items-center gap-2">
         <input type="checkbox" name="highconviction" checked={form.highconviction} onChange={handleChange} />
-        <label className="text-sm text-gray-300">🔥 Tự tin cao</label>
+        <label className="text-sm text-gray-300">🔥 Tự tin cao (High Conviction)</label>
       </div>
 
       <div className="flex items-center gap-2">
