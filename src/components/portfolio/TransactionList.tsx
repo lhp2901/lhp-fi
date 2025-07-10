@@ -32,8 +32,10 @@ export default function TransactionList({
   return (
     <div className="space-y-4">
       {transactions.map((tx) => {
-        const pnl = calculatePnL(tx.buyprice, tx.currentprice, tx.quantity)
-        const pnlPercent = calculatePnLPercentage(tx.buyprice, tx.currentprice)
+        const isSold = tx.issold
+        const currentPrice = isSold && tx.sellprice ? tx.sellprice : tx.currentprice
+        const pnl = calculatePnL(tx.buyprice, currentPrice, tx.quantity)
+        const pnlPercent = calculatePnLPercentage(tx.buyprice, currentPrice)
         const isProfit = pnl >= 0
         const totalInvested = tx.quantity * tx.buyprice
 
@@ -64,11 +66,21 @@ export default function TransactionList({
                 💰 Tổng đầu tư: {formatNumber(totalInvested)} đ
               </div>
               <div>💸 Giá mua: {formatNumber(tx.buyprice)} đ</div>
-              <div>📈 Giá hiện tại: <span className={isProfit ? 'text-green-400' : 'text-red-400'}>{formatNumber(tx.currentprice)} đ</span></div>
+              <div>
+                📈 Giá {isSold ? 'bán' : 'hiện tại'}:{' '}
+                <span className={isProfit ? 'text-green-400' : 'text-red-400'}>
+                  {formatNumber(currentPrice)} đ
+                </span>
+              </div>
               <div>🔢 Khối lượng: {formatNumber(tx.quantity)}</div>
               <div>💸 Phí: {formatNumber(tx.transactionfee)} đ</div>
-              <div>📊 Lãi/lỗ: <span className={isProfit ? 'text-green-400' : 'text-red-400'}>{formatNumber(pnl)} đ ({formatPercent(pnlPercent)})</span></div>
-              <div>📌 Trạng thái: {tx.issold ? '✅ Đã bán' : '🕒 Đang nắm giữ'}</div>
+              <div>
+                📊 Lãi/lỗ:{' '}
+                <span className={isProfit ? 'text-green-400' : 'text-red-400'}>
+                  {formatNumber(pnl)} đ ({formatPercent(pnlPercent)})
+                </span>
+              </div>
+              <div>📌 Trạng thái: {isSold ? '✅ Đã bán' : '🕒 Đang nắm giữ'}</div>
               <div>🧠 Chiến lược: {tx.strategy || '—'}</div>
               <div>📝 Ghi chú: {tx.note || '—'}</div>
             </div>

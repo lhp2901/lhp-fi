@@ -7,15 +7,21 @@ import TransactionList from '@/components/portfolio/TransactionList'
 import AddTransactionForm from '@/components/portfolio/AddTransactionForm'
 import EditTransactionForm from '@/components/portfolio/EditTransactionForm'
 
+type Transaction = {
+  id: string
+  [key: string]: any
+}
+
 export default function PortfolioPage() {
   const [userName, setUserName] = useState('')
   const [loading, setLoading] = useState(true)
-  const [transactions, setTransactions] = useState<any[]>([])
+  const [transactions, setTransactions] = useState<Transaction[]>([])
   const [showForm, setShowForm] = useState(false)
-  const [editingTx, setEditingTx] = useState<any | null>(null)
+  const [editingTx, setEditingTx] = useState<Transaction | null>(null)
 
   const router = useRouter()
 
+  // ✅ Kiểm tra đăng nhập
   useEffect(() => {
     const fetchUser = async () => {
       const { data: { session }, error } = await supabase.auth.getSession()
@@ -31,11 +37,18 @@ export default function PortfolioPage() {
     fetchUser()
   }, [router])
 
+  // ✅ Tải danh sách giao dịch
   const fetchTransactions = async () => {
-    const { data } = await supabase
+    const { data, error } = await supabase
       .from('portfolio_transactions')
       .select('*')
       .order('created_at', { ascending: false })
+
+    if (error) {
+      console.error('Lỗi lấy dữ liệu:', error.message)
+      return
+    }
+
     setTransactions(data || [])
   }
 
@@ -43,18 +56,19 @@ export default function PortfolioPage() {
     fetchTransactions()
   }, [])
 
-  const handleUpdate = async (form: any) => {
+  // ✅ Cập nhật giao dịch
+  const handleUpdate = async (form: Transaction) => {
     const { id, ...updateData } = form
     const { error } = await supabase
       .from('portfolio_transactions')
       .update(updateData)
       .eq('id', id)
 
-    if (!error) {
+    if (error) {
+      alert('❌ Lỗi cập nhật: ' + error.message)
+    } else {
       setEditingTx(null)
       fetchTransactions()
-    } else {
-      alert('❌ Lỗi cập nhật: ' + error.message)
     }
   }
 
@@ -69,6 +83,7 @@ export default function PortfolioPage() {
   return (
     <div className="p-6 space-y-6">
       <div className="bg-white/5 border border-white/10 p-4 rounded-xl">
+        {/* Tiêu đề + nút toggle */}
         <div className="flex items-center justify-between mb-4">
           <h1 className="text-xl font-semibold text-teal-400">📋 Lịch sử giao dịch</h1>
           <button
@@ -79,6 +94,7 @@ export default function PortfolioPage() {
           </button>
         </div>
 
+        {/* Chỉnh sửa hoặc hiển thị danh sách */}
         {editingTx ? (
           <EditTransactionForm
             initial={editingTx}
@@ -93,6 +109,7 @@ export default function PortfolioPage() {
           />
         )}
 
+        {/* Form thêm mới */}
         {showForm && (
           <div className="mt-6 border-t border-white/10 pt-6">
             <h2 className="text-lg font-semibold text-blue-400 mb-4">➕ Thêm giao dịch mới</h2>

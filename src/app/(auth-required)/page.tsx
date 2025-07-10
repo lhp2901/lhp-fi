@@ -17,16 +17,17 @@ const quotes = [
   'Đầu tư vào bản thân là khoản đầu tư sinh lời nhất.',
 ]
 
+type TabKey = 'dashboard' | 'market' | 'analysis' | 'portfolio'
+
 export default function HomePage() {
-  const [userName, setUserName] = useState('')
-  const [loading, setLoading] = useState(true)
-  const [activeTab, setActiveTab] = useState<'dashboard' | 'analysis' | 'market' | 'portfolio'>('dashboard')
-  const [transactions, setTransactions] = useState<any[]>([])
-  const [showForm, setShowForm] = useState(false)
-  const [editingTx, setEditingTx] = useState<any | null>(null)
-
   const router = useRouter()
+  const [loading, setLoading] = useState(true)
+  const [activeTab, setActiveTab] = useState<TabKey>('dashboard')
+  const [transactions, setTransactions] = useState<any[]>([])
+  const [editingTx, setEditingTx] = useState<any | null>(null)
+  const [showForm, setShowForm] = useState(false)
 
+  // ✅ Kiểm tra đăng nhập
   useEffect(() => {
     const fetchUser = async () => {
       const { data: { session }, error } = await supabase.auth.getSession()
@@ -34,14 +35,17 @@ export default function HomePage() {
         router.push('/login')
         return
       }
-      const user = session.user
-      const name = user.user_metadata?.full_name || user.email
-      setUserName(name)
       setLoading(false)
-      router.refresh()
     }
     fetchUser()
   }, [router])
+
+  // ✅ Lấy giao dịch khi vào tab portfolio
+  useEffect(() => {
+    if (activeTab === 'portfolio') {
+      fetchTransactions()
+    }
+  }, [activeTab])
 
   const fetchTransactions = async () => {
     const { data } = await supabase
@@ -51,15 +55,13 @@ export default function HomePage() {
     setTransactions(data || [])
   }
 
-  useEffect(() => {
-    if (activeTab === 'portfolio') {
-      fetchTransactions()
-    }
-  }, [activeTab])
-
   const handleUpdate = async (form: any) => {
     const { id, ...updateData } = form
-    const { error } = await supabase.from('portfolio_transactions').update(updateData).eq('id', id)
+    const { error } = await supabase
+      .from('portfolio_transactions')
+      .update(updateData)
+      .eq('id', id)
+
     if (!error) {
       setEditingTx(null)
       fetchTransactions()
@@ -78,12 +80,11 @@ export default function HomePage() {
 
   return (
     <div className="space-y-6">
-      {/* Marquee câu châm ngôn */}
+      {/* 🎯 Marquee */}
       <div className="relative w-full h-10 overflow-hidden bg-black rounded-md border border-gray-700">
         <div
           className="absolute whitespace-nowrap text-white font-semibold text-lg animate-marquee"
           style={{ animationDuration: '20s' }}
-          aria-label="Câu châm ngôn tài chính"
         >
           {quotes.map((quote, idx) => (
             <span key={idx} className="mr-10">
@@ -93,7 +94,7 @@ export default function HomePage() {
         </div>
       </div>
 
-      {/* Tabs */}
+      {/* 🔥 Tabs */}
       <div className="flex gap-3 flex-wrap mb-4">
         {[
           { key: 'dashboard', label: '📊 Dashboard' },
@@ -103,7 +104,7 @@ export default function HomePage() {
         ].map((tab) => (
           <button
             key={tab.key}
-            onClick={() => setActiveTab(tab.key as any)}
+            onClick={() => setActiveTab(tab.key as TabKey)}
             className={`px-4 py-2 rounded-md text-sm font-medium border ${
               activeTab === tab.key
                 ? 'bg-indigo-600 text-white'
@@ -115,7 +116,7 @@ export default function HomePage() {
         ))}
       </div>
 
-      {/* Tab content */}
+      {/* 💾 Nội dung từng tab */}
       {activeTab === 'dashboard' && (
         <section className="text-slate-400 border border-white/10 p-4 rounded-xl bg-white/5">
           <h2 className="text-lg font-semibold text-teal-300 mb-2">📊 Tổng quan tài chính</h2>

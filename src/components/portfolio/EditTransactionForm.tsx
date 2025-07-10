@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import {
   formatNumber,
   parseNumber,
@@ -57,36 +57,61 @@ export default function EditTransactionForm({
   onCancel: () => void
   onSave: (form: any) => void
 }) {
-  const [form, setForm] = useState<FormData>({ ...emptyForm, ...initial })
+  const safeInitial: FormData = {
+    ...emptyForm,
+    ...initial,
+    quantity: initial?.quantity?.toLocaleString() || '',
+    buyprice: initial?.buyprice?.toLocaleString() || '',
+    currentprice: initial?.currentprice?.toLocaleString() || '',
+    sellprice: initial?.sellprice?.toLocaleString() || '',
+    sellfee: initial?.sellfee?.toLocaleString() || '',
+    tags: Array.isArray(initial?.tags) ? initial.tags.join(', ') : initial?.tags || '',
+    highconviction: !!initial?.highconviction,
+    issold: !!initial?.issold,
+  }
+
+  const [form, setForm] = useState<FormData>(safeInitial)
   const [saving, setSaving] = useState(false)
 
   const quantity = parseNumber(form.quantity)
   const buyprice = parseNumber(form.buyprice)
   const currentprice = parseNumber(form.currentprice)
   const sellprice = parseNumber(form.sellprice)
-  const sellfee = parseNumber(form.sellfee)
-
   const feeRate =
     form.category === 'Crypto' ? 0.002 : form.category === 'VN30F1M' ? 0.0004 : 0.0015
   const transactionfee = calculateFee(quantity, buyprice, feeRate)
+
   const pnl = calculatePnL(buyprice, currentprice, quantity)
   const pnlPercent = calculatePnLPercentage(buyprice, currentprice)
 
   const handleChange = (
     e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>
   ) => {
-    const target = e.target
-    const { name, value, type } = target
+    const { name, value, type } = e.target
     const newValue =
-      type === 'checkbox' && 'checked' in target
-        ? (target as HTMLInputElement).checked
+      type === 'checkbox' && 'checked' in e.target
+        ? (e.target as HTMLInputElement).checked
+        : ['buyprice', 'quantity', 'currentprice', 'sellprice', 'sellfee'].includes(name)
+        ? formatNumber(parseNumber(value))
         : value
 
-    setForm((prev: FormData) => ({
+    setForm(prev => ({
       ...prev,
       [name]: newValue,
     }))
   }
+
+  useEffect(() => {
+    if (form.issold && !form.sellfee && form.sellprice) {
+      const qty = parseNumber(form.quantity)
+      const sellP = parseNumber(form.sellprice)
+      const sellFee = calculateFee(qty, sellP, feeRate)
+      setForm(prev => ({
+        ...prev,
+        sellfee: formatNumber(sellFee),
+      }))
+    }
+  }, [form.sellprice, form.issold])
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -95,11 +120,11 @@ export default function EditTransactionForm({
     const updated = {
       ...form,
       assetname: toUpperCaseTrim(form.assetname),
-      quantity,
-      buyprice,
-      currentprice,
-      sellprice: form.issold ? sellprice : null,
-      sellfee: form.issold ? sellfee : null,
+      quantity: parseNumber(form.quantity),
+      buyprice: parseNumber(form.buyprice),
+      currentprice: parseNumber(form.currentprice),
+      sellprice: form.issold ? parseNumber(form.sellprice) : null,
+      sellfee: form.issold ? parseNumber(form.sellfee) : null,
       tags: splitTags(form.tags),
       transactionfee,
     }
@@ -142,9 +167,9 @@ export default function EditTransactionForm({
           <label className="text-sm text-gray-400">Khối lượng</label>
           <input
             name="quantity"
-            value={String(form.quantity)}
+            value={form.quantity}
             onChange={handleChange}
-            className="w-full p-2 rounded bg-zinc-700 text-white"
+            className="w-full p-2 rounded bg-zinc-700 text-white text-right"
           />
         </div>
 
@@ -152,9 +177,9 @@ export default function EditTransactionForm({
           <label className="text-sm text-gray-400">Giá mua</label>
           <input
             name="buyprice"
-            value={String(form.buyprice)}
+            value={form.buyprice}
             onChange={handleChange}
-            className="w-full p-2 rounded bg-zinc-700 text-white"
+            className="w-full p-2 rounded bg-zinc-700 text-white text-right"
           />
         </div>
 
@@ -162,9 +187,9 @@ export default function EditTransactionForm({
           <label className="text-sm text-gray-400">Giá hiện tại</label>
           <input
             name="currentprice"
-            value={String(form.currentprice)}
+            value={form.currentprice}
             onChange={handleChange}
-            className="w-full p-2 rounded bg-zinc-700 text-white"
+            className="w-full p-2 rounded bg-zinc-700 text-white text-right"
           />
         </div>
 
@@ -231,14 +256,11 @@ export default function EditTransactionForm({
           <button
             key={e}
             type="button"
-            onClick={() =>
-              setForm((prev: FormData) => ({
-                ...prev,
-                note: e,
-              }))
-            }
+            onClick={() => setForm((prev) => ({ ...prev, note: e }))}
             className={`text-xs px-2 py-1 rounded-full border ${
-              form.note === e ? 'bg-yellow-300 text-black' : 'text-gray-400 border-gray-600'
+              form.note === e
+                ? 'bg-yellow-300 text-black'
+                : 'text-gray-400 border-gray-600'
             }`}
           >
             {e}
@@ -273,18 +295,18 @@ export default function EditTransactionForm({
             <label className="text-sm text-gray-400">Giá bán</label>
             <input
               name="sellprice"
-              value={String(form.sellprice)}
+              value={form.sellprice}
               onChange={handleChange}
-              className="w-full p-2 rounded bg-zinc-700 text-white"
+              className="w-full p-2 rounded bg-zinc-700 text-white text-right"
             />
           </div>
           <div>
             <label className="text-sm text-gray-400">Phí bán</label>
             <input
               name="sellfee"
-              value={String(form.sellfee)}
+              value={form.sellfee}
               onChange={handleChange}
-              className="w-full p-2 rounded bg-zinc-700 text-white"
+              className="w-full p-2 rounded bg-zinc-700 text-white text-right"
             />
           </div>
         </div>
