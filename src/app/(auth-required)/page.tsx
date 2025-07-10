@@ -5,8 +5,9 @@ import { useRouter } from 'next/navigation'
 import { supabase } from '@/lib/supabase'
 import AnalysisPage from './analysis/stocks/page'
 import MarketAnalysisPage from './analysis/market-analysis/page'
-import TransactionTable from '@/components/portfolio/TransactionTable'
+import TransactionList from '@/components/portfolio/TransactionList'
 import AddTransactionForm from '@/components/portfolio/AddTransactionForm'
+import EditTransactionForm from '@/components/portfolio/EditTransactionForm'
 
 const quotes = [
   'Đừng bao giờ đặt tất cả trứng vào cùng một giỏ.',
@@ -22,6 +23,7 @@ export default function HomePage() {
   const [activeTab, setActiveTab] = useState<'dashboard' | 'analysis' | 'market' | 'portfolio'>('dashboard')
   const [transactions, setTransactions] = useState<any[]>([])
   const [showForm, setShowForm] = useState(false)
+  const [editingTx, setEditingTx] = useState<any | null>(null)
 
   const router = useRouter()
 
@@ -54,6 +56,17 @@ export default function HomePage() {
       fetchTransactions()
     }
   }, [activeTab])
+
+  const handleUpdate = async (form: any) => {
+    const { id, ...updateData } = form
+    const { error } = await supabase.from('portfolio_transactions').update(updateData).eq('id', id)
+    if (!error) {
+      setEditingTx(null)
+      fetchTransactions()
+    } else {
+      alert('❌ Lỗi cập nhật: ' + error.message)
+    }
+  }
 
   if (loading) {
     return (
@@ -135,7 +148,19 @@ export default function HomePage() {
               </button>
             </div>
 
-            <TransactionTable transactions={transactions} onRefresh={fetchTransactions} />
+            {editingTx ? (
+              <EditTransactionForm
+                initial={editingTx}
+                onCancel={() => setEditingTx(null)}
+                onSave={handleUpdate}
+              />
+            ) : (
+              <TransactionList
+                transactions={transactions}
+                onRefresh={fetchTransactions}
+                setEditingTx={setEditingTx}
+              />
+            )}
 
             {showForm && (
               <div className="mt-6 border-t border-white/10 pt-6">

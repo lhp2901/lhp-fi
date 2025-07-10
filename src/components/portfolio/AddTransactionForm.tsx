@@ -46,12 +46,15 @@ export default function AddTransactionForm({ onSaved }: { onSaved?: () => void }
   const sellprice = parseNumber(form.sellprice)
   const sellfee = parseNumber(form.sellfee)
 
-  const feeRate = form.category === 'Crypto' ? 0.002 : form.category === 'VN30F1M' ? 0.0004 : 0.0015
+  const feeRate =
+    form.category === 'Crypto' ? 0.002 : form.category === 'VN30F1M' ? 0.0004 : 0.0015
   const transactionfee = calculateFee(quantity, buyprice, feeRate)
   const pnl = calculatePnL(buyprice, currentprice, quantity)
   const pnlPercent = calculatePnLPercentage(buyprice, currentprice)
 
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
+  const handleChange = (
+    e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>
+  ) => {
     const target = e.target as HTMLInputElement
     const { name, value, type } = target
     const checked = type === 'checkbox' ? target.checked : undefined
@@ -64,6 +67,7 @@ export default function AddTransactionForm({ onSaved }: { onSaved?: () => void }
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     setSaving(true)
+
     const { error } = await supabase.from('portfolio_transactions').insert({
       assetname: toUpperCaseTrim(form.assetname),
       category: form.category,
@@ -162,7 +166,7 @@ export default function AddTransactionForm({ onSaved }: { onSaved?: () => void }
       </div>
 
       <div>
-        <label className="text-sm text-gray-400">🧠 Chiến lược đầu tư (ngắn hạn, tăng trưởng...)</label>
+        <label className="text-sm text-gray-400">🧠 Chiến lược đầu tư</label>
         <input
           name="strategy"
           value={form.strategy}
@@ -184,7 +188,7 @@ export default function AddTransactionForm({ onSaved }: { onSaved?: () => void }
       </div>
 
       <div>
-        <label className="text-sm text-gray-400">📚 Nguồn ý tưởng đầu tư (tự nghiên cứu, bạn bè...)</label>
+        <label className="text-sm text-gray-400">📚 Nguồn ý tưởng đầu tư</label>
         <input
           name="source"
           value={form.source}
@@ -195,7 +199,7 @@ export default function AddTransactionForm({ onSaved }: { onSaved?: () => void }
       </div>
 
       <div>
-        <label className="text-sm text-gray-400">📓 Ghi chú cảm xúc / cảm nhận</label>
+        <label className="text-sm text-gray-400">📓 Ghi chú cảm xúc</label>
         <textarea
           name="note"
           value={form.note}
@@ -209,7 +213,9 @@ export default function AddTransactionForm({ onSaved }: { onSaved?: () => void }
               type="button"
               onClick={() => setForm((prev) => ({ ...prev, note: e }))}
               className={`text-xs px-2 py-1 rounded-full border ${
-                form.note === e ? 'bg-yellow-300 text-black' : 'text-gray-400 border-gray-600'
+                form.note === e
+                  ? 'bg-yellow-300 text-black'
+                  : 'text-gray-400 border-gray-600'
               }`}
             >
               {e}
@@ -230,12 +236,22 @@ export default function AddTransactionForm({ onSaved }: { onSaved?: () => void }
       </div>
 
       <div className="flex items-center gap-2">
-        <input type="checkbox" name="highconviction" checked={form.highconviction} onChange={handleChange} />
-        <label className="text-sm text-gray-300">🔥 Tự tin cao (High Conviction)</label>
+        <input
+          type="checkbox"
+          name="highconviction"
+          checked={form.highconviction}
+          onChange={handleChange}
+        />
+        <label className="text-sm text-gray-300">🔥 Tự tin cao</label>
       </div>
 
       <div className="flex items-center gap-2">
-        <input type="checkbox" name="issold" checked={form.issold} onChange={handleChange} />
+        <input
+          type="checkbox"
+          name="issold"
+          checked={form.issold}
+          onChange={handleChange}
+        />
         <label className="text-sm text-gray-300">✅ Đã bán</label>
       </div>
 
@@ -274,3 +290,4 @@ export default function AddTransactionForm({ onSaved }: { onSaved?: () => void }
     </form>
   )
 }
+  
