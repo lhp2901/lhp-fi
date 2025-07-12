@@ -24,7 +24,6 @@ export default function AIAnalysisPanel({ symbol }: Props) {
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
 
-  // 📊 Lấy dữ liệu AI từ Supabase
   useEffect(() => {
     const fetchData = async () => {
       if (!symbol) return
@@ -35,17 +34,20 @@ export default function AIAnalysisPanel({ symbol }: Props) {
         .order('date', { ascending: true })
         .limit(90)
 
-      if (data) {
+      if (error) {
+        console.error('❌ Lỗi lấy dữ liệu AI:', error.message)
+        setMessage('Không thể lấy dữ liệu AI.')
+      } else if (!data || data.length === 0) {
+        setMessage('⚠️ Không tìm thấy dữ liệu AI cho mã này.')
+      } else {
         setData(data)
         setMessage('')
-      } else {
-        setMessage('Không tìm thấy dữ liệu AI.')
       }
     }
+
     fetchData()
   }, [symbol])
 
-  // 🤖 Gọi dự đoán từ API
   useEffect(() => {
     const fetchPrediction = async () => {
       if (!symbol) return
@@ -60,7 +62,7 @@ export default function AIAnalysisPanel({ symbol }: Props) {
           setError(json.error || 'Lỗi khi gọi AI.')
         }
       } catch {
-        setError('❌ Không thể kết nối AI server.')
+        setError('❌ Không thể kết nối tới AI server.')
       }
       setLoading(false)
     }
@@ -73,18 +75,26 @@ export default function AIAnalysisPanel({ symbol }: Props) {
     return `${date.getDate()}/${date.getMonth() + 1}`
   }
 
-  const last = data[data.length - 1]
-  const first = data[0]
-  const priceChange = last && first ? ((last.close - first.close) / first.close * 100).toFixed(2) : '0'
+  const formatNumber = (num: number | null | undefined) =>
+    typeof num === 'number' ? num.toLocaleString('vi-VN') : '—'
+
+  const last = data.length ? data[data.length - 1] : null
+  const first = data.length ? data[0] : null
+
+  const priceChange = last && first && first.close
+    ? (((last.close - first.close) / first.close) * 100).toFixed(2)
+    : '0'
+
   const trend = parseFloat(priceChange) > 0 ? '📈 Xu hướng tăng' : '📉 Xu hướng giảm'
 
-  const aiSignal = last && last.rsi !== null
-    ? last.rsi < 30 && last.close < last.ma20
-      ? '🟢 Gợi ý: MUA (RSI thấp, dưới MA20)'
-      : last.rsi > 70 && last.close > last.ma20
-        ? '🔴 Gợi ý: BÁN (RSI cao, trên MA20)'
-        : '🟡 Gợi ý: GIỮ (Không rõ xu hướng)'
-    : '⏳ Đang phân tích...'
+  const aiSignal =
+    last?.rsi != null && last?.close != null && last?.ma20 != null
+      ? last.rsi < 30 && last.close < last.ma20
+        ? '🟢 Gợi ý: MUA (RSI thấp, dưới MA20)'
+        : last.rsi > 70 && last.close > last.ma20
+          ? '🔴 Gợi ý: BÁN (RSI cao, trên MA20)'
+          : '🟡 Gợi ý: GIỮ (Không rõ xu hướng)'
+      : '⏳ Đang phân tích...'
 
   return (
     <div className="space-y-8">
@@ -96,8 +106,8 @@ export default function AIAnalysisPanel({ symbol }: Props) {
 
       {prediction && (
         <div className="border p-4 rounded bg-white/5 text-white">
-          <p>📅 Ngày: <strong>{new Date(prediction.date).toLocaleDateString('vi-VN')}</strong></p>
-          <p>📊 Xác suất thắng: <strong>{(prediction.probability * 100).toFixed(2)}%</strong></p>
+          <p>📅 Ngày: <strong>{prediction.date ? new Date(prediction.date).toLocaleDateString('vi-VN') : '—'}</strong></p>
+          <p>📊 Xác suất thắng: <strong>{prediction.probability != null ? (prediction.probability * 100).toFixed(2) + '%' : '—'}</strong></p>
           <p>
             🤖 AI Gợi ý:{" "}
             <strong className={
@@ -117,9 +127,13 @@ export default function AIAnalysisPanel({ symbol }: Props) {
         <>
           <div>
             <h2 className="text-lg font-semibold mb-2">💰 Phân tích lời/lỗ</h2>
-            <p>Giá đầu: <strong>{first.close}</strong> – Giá hiện tại: <strong>{last.close}</strong></p>
-            <p>Lợi nhuận: <strong className={parseFloat(priceChange) >= 0 ? 'text-green-500' : 'text-red-500'}>
-              {priceChange}%</strong> – {trend}</p>
+            <p>Giá đầu: <strong>{formatNumber(first?.close)}</strong> – Giá hiện tại: <strong>{formatNumber(last?.close)}</strong></p>
+            <p>
+              Lợi nhuận:
+              <strong className={parseFloat(priceChange) >= 0 ? 'text-green-500 ml-1' : 'text-red-500 ml-1'}>
+                {priceChange}%
+              </strong> – {trend}
+            </p>
             <p className="mt-4 text-lg font-bold">{aiSignal}</p>
           </div>
 

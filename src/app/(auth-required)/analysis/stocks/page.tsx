@@ -9,6 +9,7 @@ import PortfolioTable from '@/components/stocks/PortfolioTable'
 import type { PortfolioItem } from '@/components/stocks/PortfolioTable'
 
 export default function AnalysisPage() {
+  const [userId, setUserId] = useState<string | null>(null)
   const [symbol, setSymbol] = useState('')
   const [symbols, setSymbols] = useState<string[]>([])
   const [tab, setTab] = useState<'basic' | 'ai'>('basic')
@@ -17,25 +18,29 @@ export default function AnalysisPage() {
   const [loadingPortfolio, setLoadingPortfolio] = useState(true)
 
   useEffect(() => {
-    const fetchSymbols = async () => {
-      const { data, error } = await supabase
-        .from('stock_entries')
-        .select('symbol')
-        .neq('symbol', null)
-
-      if (error) {
-        console.error('❌ Lỗi lấy danh sách mã:', error.message)
+    const init = async () => {
+      const { data: { user }, error } = await supabase.auth.getUser()
+      if (error || !user) {
+        console.error('❌ Không xác định được user:', error?.message)
         return
       }
 
-      if (data) {
+      setUserId(user.id)
+
+      const { data, error: symbolErr } = await supabase
+        .from('stock_entries')
+        .select('symbol')
+        .eq('user_id', user.id)
+        .neq('symbol', null)
+
+      if (symbolErr) {
+        console.error('❌ Lỗi lấy danh sách mã:', symbolErr.message)
+      } else if (data) {
         const unique = Array.from(new Set(data.map((item) => item.symbol)))
         setSymbols(unique)
         if (!symbol && unique.length > 0) setSymbol(unique[0])
       }
-    }
 
-    const fetchPortfolio = async () => {
       try {
         const res = await fetch('/api/portfolio')
         const json = await res.json()
@@ -52,8 +57,7 @@ export default function AnalysisPage() {
       }
     }
 
-    fetchSymbols()
-    fetchPortfolio()
+    init()
   }, [])
 
   return (
@@ -87,12 +91,25 @@ export default function AnalysisPage() {
         </Button>
       </div>
 
+      {/* ✅ Chỉ render khi đầy đủ dữ liệu cần thiết */}
       {tab === 'basic' ? (
-        <BasicAnalysisPanel symbol={symbol} />
+        symbol && userId ? (
+          <BasicAnalysisPanel symbol={symbol} userId={userId} />
+        ) : (
+          <p className="text-yellow-300">⏳ Đang tải dữ liệu phân tích cơ bản...</p>
+        )
       ) : (
         <>
-          <AIAnalysisPanel symbol={symbol} />
-          <PortfolioTable portfolio={portfolio} date={portfolioDate} loading={loadingPortfolio} />
+          {symbol ? (
+            <AIAnalysisPanel symbol={symbol} />
+          ) : (
+            <p className="text-yellow-300">⏳ Đang tải dữ liệu AI...</p>
+          )}
+          <PortfolioTable
+            portfolio={portfolio}
+            date={portfolioDate}
+            loading={loadingPortfolio}
+          />
         </>
       )}
     </div>

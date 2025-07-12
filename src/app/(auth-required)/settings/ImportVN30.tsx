@@ -124,7 +124,7 @@ const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
       const userId = userData?.user?.id
       if (userId) {
         await supabase.from('import_logs').insert({
-     
+          user_id: userId,
           imported_at: new Date().toISOString(),
           type: 'vn30',
           total_rows: entries.length,

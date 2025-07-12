@@ -1,56 +1,54 @@
-"use client"
+'use client'
 
-import { useEffect, useState } from "react"
-import { supabase } from "@/lib/supabase"
+import { useEffect, useState } from 'react'
+import { supabase } from '@/lib/supabase'
 import {
-  LineChart,
-  Line,
-  XAxis,
-  YAxis,
-  CartesianGrid,
-  Tooltip,
-  Legend,
-  BarChart,
-  Bar,
-  ResponsiveContainer,
-} from "recharts"
+  LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend,
+  BarChart, Bar, ResponsiveContainer
+} from 'recharts'
 
-export default function BasicAnalysisPanel({ symbol }: { symbol: string }) {
+export default function BasicAnalysisPanel({ symbol, userId }: { symbol: string, userId: string }) {
   const [rawData, setRawData] = useState<any[]>([])
   const [message, setMessage] = useState("")
 
   useEffect(() => {
     const fetchData = async () => {
-      if (!symbol) return
+      if (!symbol || !userId) return
+
       const { data, error } = await supabase
         .from("stock_entries")
         .select("*")
         .eq("symbol", symbol)
+        .eq("user_id", userId)
         .order("date", { ascending: true })
         .limit(90)
 
-      if (data) {
-        setRawData(data)
-        setMessage("")
-      } else {
-        setMessage("Không tìm thấy dữ liệu.")
+      if (error) {
+        console.error("❌ Lỗi truy vấn stock_entries:", error.message)
+        setMessage("Không thể truy vấn dữ liệu.")
+        return
       }
+
+      if (!data || data.length === 0) {
+        setMessage("⚠️ Không có dữ liệu cho mã này.")
+        return
+      }
+
+      setRawData(data)
+      setMessage("")
     }
+
     fetchData()
-  }, [symbol])
+  }, [symbol, userId])
 
-  const formatDate = (d: string) => {
-    const date = new Date(d)
-    return date.toLocaleDateString("vi-VN")
-  }
-
-  const formatNumber = (num: number) => num.toLocaleString("vi-VN")
+  const formatDate = (d: string) => new Date(d).toLocaleDateString("vi-VN")
+  const formatNumber = (num: number | null | undefined) =>
+  typeof num === 'number' ? num.toLocaleString("vi-VN") : '—'
 
   const getVolumeSpikeDays = (data: any[]) => {
     const spikes = new Set()
     for (let i = 5; i < data.length; i++) {
-      const avgVol =
-        data.slice(i - 5, i).reduce((sum, d) => sum + d.volume, 0) / 5
+      const avgVol = data.slice(i - 5, i).reduce((sum, d) => sum + d.volume, 0) / 5
       if (data[i].volume > avgVol * 2) spikes.add(data[i].date)
     }
     return spikes
@@ -59,35 +57,27 @@ export default function BasicAnalysisPanel({ symbol }: { symbol: string }) {
   const getForeignBuySpikes = (data: any[]) => {
     const alerts = new Set()
     for (let i = 5; i < data.length; i++) {
-      const avgBuy =
-        data.slice(i - 5, i).reduce((sum, d) => sum + d.foreign_buy_value, 0) / 5
+      const avgBuy = data.slice(i - 5, i).reduce((sum, d) => sum + d.foreign_buy_value, 0) / 5
       if (data[i].foreign_buy_value > avgBuy * 2) alerts.add(data[i].date)
     }
     return alerts
   }
 
-  const calculateIndicators = (data: any[]) => {
-    return data.map((item, i) => {
+  const calculateIndicators = (data: any[]) =>
+    data.map((item, i) => {
       const slice = data.slice(Math.max(0, i - 19), i + 1)
       const closes = slice.map((d) => d.close)
       const ma20 = closes.reduce((a, b) => a + b, 0) / closes.length
-      const stdDev =
-        Math.sqrt(
-          closes.map((x) => (x - ma20) ** 2).reduce((a, b) => a + b, 0) /
-            closes.length
-        ) || 0
+      const stdDev = Math.sqrt(closes.map((x) => (x - ma20) ** 2).reduce((a, b) => a + b, 0) / closes.length) || 0
       const upperBB = ma20 + 2 * stdDev
       const lowerBB = ma20 - 2 * stdDev
-
       const rsi = i >= 14 ? (() => {
         const gains = data.slice(i - 13, i + 1).map((d, j) => {
-          const diff =
-            j === 0 ? 0 : d.close - data[i - 13 + j - 1].close
+          const diff = j === 0 ? 0 : d.close - data[i - 13 + j - 1].close
           return diff > 0 ? diff : 0
         })
         const losses = data.slice(i - 13, i + 1).map((d, j) => {
-          const diff =
-            j === 0 ? 0 : data[i - 13 + j - 1].close - d.close
+          const diff = j === 0 ? 0 : data[i - 13 + j - 1].close - d.close
           return diff > 0 ? diff : 0
         })
         const avgGain = gains.reduce((a, b) => a + b, 0) / 14
@@ -95,29 +85,33 @@ export default function BasicAnalysisPanel({ symbol }: { symbol: string }) {
         const rs = avgGain / (avgLoss || 1)
         return 100 - 100 / (1 + rs)
       })() : null
-
       return { ...item, ma20, upperBB, lowerBB, rsi }
     })
-  }
 
   const data = calculateIndicators(rawData)
+
+  if (message) {
+    return <p className="text-red-500">{message}</p>
+  }
+
+  if (!data.length) {
+    return <p className="text-gray-400">⏳ Đang tải dữ liệu...</p>
+  }
+
   const volumeSpikes = getVolumeSpikeDays(rawData)
   const sharkAlerts = getForeignBuySpikes(rawData)
 
   const last = data[data.length - 1]
   const first = data[0]
-  const priceChange =
-    last && first ? (((last.close - first.close) / first.close) * 100).toFixed(2) : "0"
+  const priceChange = last && first ? (((last.close - first.close) / first.close) * 100).toFixed(2) : "0"
   const trend = parseFloat(priceChange) > 0 ? "📈 Xu hướng tăng" : "📉 Xu hướng giảm"
-
-  const aiSignal =
-    last && last.rsi !== null
-      ? last.rsi < 30 && last.close < last.ma20
-        ? "🟢 Gợi ý: MUA (RSI thấp, dưới MA20)"
-        : last.rsi > 70 && last.close > last.ma20
-          ? "🔴 Gợi ý: BÁN (RSI cao, trên MA20)"
-          : "🟡 Gợi ý: GIỮ (Không rõ xu hướng)"
-      : "⏳ Đang phân tích..."
+  const aiSignal = last?.rsi != null
+    ? last.rsi < 30 && last.close < last.ma20
+      ? "🟢 Gợi ý: MUA (RSI thấp, dưới MA20)"
+      : last.rsi > 70 && last.close > last.ma20
+        ? "🔴 Gợi ý: BÁN (RSI cao, trên MA20)"
+        : "🟡 Gợi ý: GIỮ (Không rõ xu hướng)"
+    : "⏳ Đang phân tích..."
 
   return (
     <div className="pt-4">

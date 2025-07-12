@@ -133,7 +133,7 @@ export default function ImportVNINDEX() {
 
       if (userId) {
         await supabase.from('import_logs').insert({
-    
+          user_id: userId,
           imported_at: new Date().toISOString(),
           type: 'vnindex',
           total_rows: entries.length,
