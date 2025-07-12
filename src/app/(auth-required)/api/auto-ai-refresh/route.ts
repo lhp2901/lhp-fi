@@ -12,7 +12,8 @@ export async function POST() {
     const { error } = await supabase
       .from('ai_signals')
       .delete()
-      .not('id', 'is', null) // ← Xoá an toàn cho UUID
+      .not('id', 'is', null) // ✅ Đảm bảo xoá an toàn với UUID
+      
 
     if (error) {
       throw new Error(`Lỗi xoá: ${error.message}`)

@@ -2,10 +2,9 @@ import { NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
 import { SMA, RSI, BollingerBands } from 'technicalindicators'
 
-// 🔐 Supabase với quyền ghi cao
 const supabase = createClient(
   process.env.SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY! // cần quyền service-role để vượt qua RLS
+  process.env.SUPABASE_SERVICE_ROLE_KEY! // cần quyền ghi vượt qua RLS
 )
 
 const fixNull = (v: any) => (v === null || v === undefined ? 0 : v)
@@ -17,9 +16,7 @@ async function getAllUserIds(): Promise<string[]> {
     .not('user_id', 'is', null)
 
   if (error) throw error
-
-  const uniqueIds = Array.from(new Set(data.map((d: any) => d.user_id)))
-  return uniqueIds
+  return Array.from(new Set(data.map((d: any) => d.user_id)))
 }
 
 async function fetchSymbolsForUser(userId: string): Promise<string[]> {
@@ -46,7 +43,7 @@ async function fetchDataForSymbol(symbol: string, userId: string) {
 }
 
 function calculateIndicators(data: any[]) {
-  const closes = data.map((d) => fixNull(d.close))
+  const closes = data.map(d => fixNull(d.close))
   return {
     ma20: SMA.calculate({ period: 20, values: closes }),
     rsi: RSI.calculate({ period: 14, values: closes }),
@@ -112,7 +109,7 @@ async function insertAISignals(rows: any[]) {
     )
 
     if (!error) successCount++
-    else console.error(`❌ Lỗi insert ${row.symbol} (${row.user_id}) ngày ${row.date}:`, error.message)
+    else console.error(`❌ Insert lỗi ${row.symbol} (${row.user_id}) ngày ${row.date}:`, error.message)
   }
 
   console.log(`✅ Ghi thành công ${successCount}/${rows.length} dòng.`)
@@ -126,7 +123,7 @@ export async function POST() {
     console.log(`👤 Tổng số user cần xử lý: ${userIds.length}`)
 
     for (const userId of userIds) {
-      console.log(`\n🎯 User: ${userId}`)
+      console.log(`🎯 User: ${userId}`)
       const symbols = await fetchSymbolsForUser(userId)
 
       for (const symbol of symbols) {
@@ -145,10 +142,10 @@ export async function POST() {
       }
     }
 
-    console.log('\n🏁 HOÀN TẤT! Đã sinh tín hiệu cho tất cả user.')
-    return NextResponse.json({ message: '✅ AI signals generated for all users.' })
+    console.log('🏁 HOÀN TẤT! Đã sinh tín hiệu cho tất cả user.')
+    return NextResponse.json({ message: '✅ Đã sinh tín hiệu AI cho toàn bộ user.' })
   } catch (error: any) {
-    console.error('❌ Lỗi trong generate-signals.ts:', error)
+    console.error('🔥 Lỗi trong generate-signals:', error.message || error)
     return NextResponse.json({ error: error.message || 'Lỗi không xác định' }, { status: 500 })
   }
 }

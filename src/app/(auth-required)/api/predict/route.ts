@@ -1,16 +1,13 @@
-// src/app/api/predict/route.ts
-
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
-import { spawn } from 'child_process'
-import * as fs from 'fs'
-import path from 'path'
 
-// Supabase config
+// Supabase init
 const supabase = createClient(
   process.env.SUPABASE_URL!,
   process.env.SUPABASE_ANON_KEY!
 )
+
+const AI_SERVER_URL = process.env.AI_SERVER_URL || 'http://localhost:10000'
 
 export async function GET(req: NextRequest) {
   try {
@@ -21,7 +18,7 @@ export async function GET(req: NextRequest) {
       return NextResponse.json({ error: '❌ Thiếu mã cổ phiếu (symbol)' }, { status: 400 })
     }
 
-    // 📥 Lấy dòng dữ liệu mới nhất từ bảng ai_signals
+    // 🧠 Lấy dòng mới nhất từ ai_signals
     const { data, error } = await supabase
       .from('ai_signals')
       .select('*')
@@ -34,6 +31,7 @@ export async function GET(req: NextRequest) {
     }
 
     const row = data[0]
+    const date = row.date
 
     const features = {
       close: row.close,
@@ -43,49 +41,46 @@ export async function GET(req: NextRequest) {
       bb_upper: row.bb_upper,
       bb_lower: row.bb_lower,
       foreign_buy_value: row.foreign_buy_value,
-      foreign_sell_value: row.foreign_sell_value,
+      foreign_sell_value: row.foreign_sell_value
     }
 
-    const modelPath = path.join(process.cwd(), 'scripts', 'model.pkl')
-    const scriptPath = path.join(process.cwd(), 'scripts', 'predict.py')
-
-    if (!fs.existsSync(modelPath)) {
-      return NextResponse.json({ error: `❌ Không tìm thấy model.pkl tại ${modelPath}` }, { status: 500 })
-    }
-
-    if (!fs.existsSync(scriptPath)) {
-      return NextResponse.json({ error: `❌ Không tìm thấy predict.py tại ${scriptPath}` }, { status: 500 })
-    }
-
-    const result = await new Promise<string>((resolve, reject) => {
-      const py = spawn('python', [scriptPath, modelPath, JSON.stringify(features)])
-      let output = ''
-      let errorOutput = ''
-
-      py.stdout.on('data', (data) => (output += data.toString()))
-      py.stderr.on('data', (data) => (errorOutput += data.toString()))
-
-      py.on('close', (code) => {
-        if (code !== 0) {
-          console.error('❌ Python lỗi:', errorOutput)
-          reject(`Python script exited with code ${code}`)
-        } else {
-          resolve(output)
-        }
-      })
+    // 🚀 Gửi đến AI Flask server
+    const res = await fetch(`${AI_SERVER_URL}/predict`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(features)
     })
 
-    const parsed = JSON.parse(result)
+    const aiResult = await res.json()
+
+    if (!res.ok) {
+      console.error('❌ Lỗi từ AI server:', aiResult)
+      return NextResponse.json({ error: aiResult.error || 'Lỗi từ AI server' }, { status: 500 })
+    }
+
+    // 💾 Ghi lại kết quả dự đoán vào Supabase
+    const { error: updateError } = await supabase
+      .from('ai_signals')
+      .update({
+        ai_predicted_probability: aiResult.probability,
+        ai_recommendation: aiResult.recommendation
+      })
+      .eq('symbol', symbol)
+      .eq('date', date)
+
+    if (updateError) {
+      console.error('❌ Lỗi ghi Supabase:', updateError.message)
+    }
 
     return NextResponse.json({
       symbol,
-      date: row.date,
-      probability: parsed.probability,
-      recommendation: parsed.recommendation
+      date,
+      probability: aiResult.probability,
+      recommendation: aiResult.recommendation
     })
 
   } catch (err: any) {
-    console.error('🔥 Lỗi trong predict API:', err.message || err)
+    console.error('🔥 Lỗi trong API /predict:', err.message || err)
     return NextResponse.json({ error: 'Lỗi nội bộ server' }, { status: 500 })
   }
 }

@@ -7,11 +7,22 @@ const supabase = createClient(
   process.env.SUPABASE_ANON_KEY!
 )
 
-export async function GET() {
+export async function GET(req: Request) {
+  const { searchParams } = new URL(req.url)
+  const userId = searchParams.get('userId')
+
+  if (!userId) {
+    return NextResponse.json(
+      { error: 'Thiếu userId trong query!' },
+      { status: 400 }
+    )
+  }
+
   try {
     const { data, error } = await supabase
       .from('stock_entries')
       .select('symbol')
+      .eq('user_id', userId)
       .neq('symbol', null)
 
     if (error) throw error
