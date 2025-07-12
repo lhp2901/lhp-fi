@@ -1,5 +1,3 @@
-'use client'
-
 import React from 'react'
 
 export interface PortfolioItem {
@@ -22,20 +20,24 @@ const formatDateVN = (dateStr: string): string => {
   return d.toLocaleDateString('vi-VN')
 }
 
-export default function PortfolioTable({ loading, date, sourceDate, portfolio }: Props) {
-  if (loading) {
-    return <p className="mt-8 text-sm text-gray-300">⏳ Đang tải danh mục...</p>
+const getRowColor = (recommendation: string) => {
+  switch (recommendation.toUpperCase()) {
+    case 'BUY': return 'bg-green-950/40'
+    case 'SELL': return 'bg-red-950/40'
+    case 'HOLD': return 'bg-yellow-950/30'
+    case 'WATCH': return 'bg-blue-950/20'
+    default: return ''
   }
+}
 
-  const buyList = portfolio.filter((item) => item.recommendation === 'BUY')
-  const displayList =
-    buyList.length > 0
-      ? buyList
-      : portfolio
-          .sort((a, b) => b.probability - a.probability)
-          .slice(0, 3)
-          .map((item) => ({ ...item, recommendation: 'WATCH', allocation: 0 }))
+const getAllocationColor = (percent: number) => {
+  if (percent >= 40) return 'bg-green-600/80'
+  if (percent >= 25) return 'bg-green-600/50'
+  if (percent >= 10) return 'bg-green-600/30'
+  return 'bg-slate-700/30'
+}
 
+export default function PortfolioTable({ loading, date, sourceDate, portfolio }: Props) {
   return (
     <div className="mt-12 space-y-4">
       <h2 className="text-xl font-bold text-green-400">💼 Danh mục đầu tư AI đề xuất hôm nay</h2>
@@ -48,18 +50,13 @@ export default function PortfolioTable({ loading, date, sourceDate, portfolio }:
       </p>
 
       <p className="text-xs text-gray-500 italic">
-        Gợi ý dựa trên xác suất thắng của mô hình AI.
-        {buyList.length === 0 ? (
-          <>
-            {' '}Không có mã nào <span className="text-green-400 font-semibold">MUA</span>,
-            hệ thống đề xuất <span className="text-blue-400 font-semibold">top 3 mã tiềm năng</span> để bạn <span className="text-blue-300">quan sát</span>.
-          </>
-        ) : (
-          <> Chỉ hiển thị các mã có xác suất cao và được gợi ý <span className="text-green-400 font-semibold">MUA</span>.</>
-        )}
+        Gợi ý dựa trên xác suất thắng của mô hình AI. Nếu không có mã nào <span className="text-green-400 font-semibold">MUA</span>,
+        hệ thống sẽ tự động đề xuất <span className="text-blue-400 font-semibold">top 3 mã tiềm năng</span> để bạn <span className="text-blue-300">quan sát</span>.
       </p>
 
-      {displayList.length === 0 ? (
+      {loading ? (
+        <p>⏳ Đang tải danh mục...</p>
+      ) : portfolio.length === 0 ? (
         <p className="text-yellow-400">⚠️ Không có danh mục gợi ý hôm nay.</p>
       ) : (
         <div className="overflow-x-auto">
@@ -73,22 +70,15 @@ export default function PortfolioTable({ loading, date, sourceDate, portfolio }:
               </tr>
             </thead>
             <tbody>
-              {displayList.map((item, idx) => {
-                const bgColor =
-                  item.recommendation === 'BUY' ? 'bg-green-950/40' :
-                  item.recommendation === 'SELL' ? 'bg-red-950/40' :
-                  item.recommendation === 'HOLD' ? 'bg-yellow-950/30' :
-                  item.recommendation === 'WATCH' ? 'bg-blue-950/20' : ''
-
+              {portfolio.map((item, idx) => {
+                const percent = item.allocation ? +(item.allocation * 100).toFixed(0) : 0
                 return (
                   <tr
                     key={idx}
-                    className={`border-b border-slate-700 hover:bg-slate-800 transition duration-200 ${bgColor}`}
+                    className={`border-b border-slate-700 hover:bg-slate-800 transition duration-200 ${getRowColor(item.recommendation)}`}
                   >
                     <td className="px-4 py-2 font-semibold text-blue-400">{item.symbol}</td>
-                    <td className="px-4 py-2 text-center">
-                      {(item.probability * 100).toFixed(2)}%
-                    </td>
+                    <td className="px-4 py-2 text-center">{(item.probability * 100).toFixed(2)}%</td>
                     <td className="px-4 py-2 text-center">
                       {item.recommendation === 'BUY' && <span className="text-green-400 font-semibold">MUA</span>}
                       {item.recommendation === 'SELL' && <span className="text-red-400 font-semibold">BÁN</span>}
@@ -96,9 +86,16 @@ export default function PortfolioTable({ loading, date, sourceDate, portfolio }:
                       {item.recommendation === 'WATCH' && <span className="text-blue-400 font-semibold">QUAN SÁT</span>}
                     </td>
                     <td className="px-4 py-2 text-center">
-                      {typeof item.allocation === 'number' && item.recommendation !== 'WATCH'
-                        ? `${(item.allocation * 100).toFixed(0)}%`
-                        : <span className="text-gray-500 italic">—</span>}
+                      {percent > 0 ? (
+                        <div
+                          className={`inline-block px-2 py-1 rounded-full text-white font-semibold ${getAllocationColor(percent)}`}
+                          title={`Phân bổ ${percent}% vốn`}
+                        >
+                          {percent}%
+                        </div>
+                      ) : (
+                        <span className="text-gray-500 italic">—</span>
+                      )}
                     </td>
                   </tr>
                 )
