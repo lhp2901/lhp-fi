@@ -1,3 +1,5 @@
+'use client'
+
 import React from 'react'
 
 export interface PortfolioItem {
@@ -21,6 +23,19 @@ const formatDateVN = (dateStr: string): string => {
 }
 
 export default function PortfolioTable({ loading, date, sourceDate, portfolio }: Props) {
+  if (loading) {
+    return <p className="mt-8 text-sm text-gray-300">⏳ Đang tải danh mục...</p>
+  }
+
+  const buyList = portfolio.filter((item) => item.recommendation === 'BUY')
+  const displayList =
+    buyList.length > 0
+      ? buyList
+      : portfolio
+          .sort((a, b) => b.probability - a.probability)
+          .slice(0, 3)
+          .map((item) => ({ ...item, recommendation: 'WATCH', allocation: 0 }))
+
   return (
     <div className="mt-12 space-y-4">
       <h2 className="text-xl font-bold text-green-400">💼 Danh mục đầu tư AI đề xuất hôm nay</h2>
@@ -33,13 +48,18 @@ export default function PortfolioTable({ loading, date, sourceDate, portfolio }:
       </p>
 
       <p className="text-xs text-gray-500 italic">
-        Gợi ý dựa trên xác suất thắng của mô hình AI. Nếu không có mã nào <span className="text-green-400 font-semibold">MUA</span>,
-        hệ thống sẽ tự động đề xuất <span className="text-blue-400 font-semibold">top 3 mã tiềm năng</span> để bạn <span className="text-blue-300">quan sát</span>.
+        Gợi ý dựa trên xác suất thắng của mô hình AI.
+        {buyList.length === 0 ? (
+          <>
+            {' '}Không có mã nào <span className="text-green-400 font-semibold">MUA</span>,
+            hệ thống đề xuất <span className="text-blue-400 font-semibold">top 3 mã tiềm năng</span> để bạn <span className="text-blue-300">quan sát</span>.
+          </>
+        ) : (
+          <> Chỉ hiển thị các mã có xác suất cao và được gợi ý <span className="text-green-400 font-semibold">MUA</span>.</>
+        )}
       </p>
 
-      {loading ? (
-        <p>⏳ Đang tải danh mục...</p>
-      ) : portfolio.length === 0 ? (
+      {displayList.length === 0 ? (
         <p className="text-yellow-400">⚠️ Không có danh mục gợi ý hôm nay.</p>
       ) : (
         <div className="overflow-x-auto">
@@ -53,7 +73,7 @@ export default function PortfolioTable({ loading, date, sourceDate, portfolio }:
               </tr>
             </thead>
             <tbody>
-              {portfolio.map((item, idx) => {
+              {displayList.map((item, idx) => {
                 const bgColor =
                   item.recommendation === 'BUY' ? 'bg-green-950/40' :
                   item.recommendation === 'SELL' ? 'bg-red-950/40' :
@@ -76,9 +96,9 @@ export default function PortfolioTable({ loading, date, sourceDate, portfolio }:
                       {item.recommendation === 'WATCH' && <span className="text-blue-400 font-semibold">QUAN SÁT</span>}
                     </td>
                     <td className="px-4 py-2 text-center">
-                      {typeof item.allocation === 'number'
+                      {typeof item.allocation === 'number' && item.recommendation !== 'WATCH'
                         ? `${(item.allocation * 100).toFixed(0)}%`
-                        : <span className="text-gray-500 italic">-</span>}
+                        : <span className="text-gray-500 italic">—</span>}
                     </td>
                   </tr>
                 )

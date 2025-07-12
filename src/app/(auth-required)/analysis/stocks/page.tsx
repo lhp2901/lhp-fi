@@ -41,8 +41,9 @@ export default function AnalysisPage() {
         if (!symbol && unique.length > 0) setSymbol(unique[0])
       }
 
+      // ✅ Gọi portfolio kèm userId
       try {
-        const res = await fetch('/api/portfolio')
+        const res = await fetch(`/api/portfolio?userId=${user.id}`)
         const json = await res.json()
         if (res.ok) {
           setPortfolio(json.portfolio)

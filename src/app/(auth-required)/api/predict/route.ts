@@ -1,10 +1,11 @@
+// /app/api/predict/route.ts (Next.js 13+ App Router)
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
 
-// Supabase init
+// 📡 Tạo Supabase client (dùng service key để có quyền ghi)
 const supabase = createClient(
   process.env.SUPABASE_URL!,
-  process.env.SUPABASE_ANON_KEY!
+  process.env.SUPABASE_SERVICE_ROLE_KEY! // ⚠️ PHẢI DÙNG service_role để UPDATE
 )
 
 const AI_SERVER_URL = process.env.AI_SERVER_URL || 'http://localhost:10000'
@@ -12,13 +13,13 @@ const AI_SERVER_URL = process.env.AI_SERVER_URL || 'http://localhost:10000'
 export async function GET(req: NextRequest) {
   try {
     const { searchParams } = new URL(req.url)
-    const symbol = searchParams.get('symbol')
+    const symbol = searchParams.get('symbol')?.toUpperCase()
 
     if (!symbol) {
       return NextResponse.json({ error: '❌ Thiếu mã cổ phiếu (symbol)' }, { status: 400 })
     }
 
-    // 🧠 Lấy dòng mới nhất từ ai_signals
+    // 🔍 Truy vấn dữ liệu mới nhất cho symbol
     const { data, error } = await supabase
       .from('ai_signals')
       .select('*')
@@ -26,25 +27,48 @@ export async function GET(req: NextRequest) {
       .order('date', { ascending: false })
       .limit(1)
 
-    if (error || !data || data.length === 0) {
+    if (error) {
+      console.error('❌ Lỗi Supabase:', error.message)
+      return NextResponse.json({ error: '⚠️ Lỗi truy vấn Supabase' }, { status: 500 })
+    }
+
+    if (!data || data.length === 0) {
       return NextResponse.json({ error: '⚠️ Không tìm thấy dữ liệu cho mã này.' }, { status: 404 })
     }
 
     const row = data[0]
     const date = row.date
 
-    const features = {
-      close: row.close,
-      volume: row.volume,
-      ma20: row.ma20,
-      rsi: row.rsi,
-      bb_upper: row.bb_upper,
-      bb_lower: row.bb_lower,
-      foreign_buy_value: row.foreign_buy_value,
-      foreign_sell_value: row.foreign_sell_value
+    // ✅ Kiểm tra đầy đủ các feature cần thiết
+    const requiredFields = [
+      'close', 'volume', 'ma20', 'rsi',
+      'bb_upper', 'bb_lower',
+      'foreign_buy_value', 'foreign_sell_value'
+    ]
+
+    for (const field of requiredFields) {
+      if (row[field] === null || row[field] === undefined) {
+        console.error(`❌ Thiếu trường dữ liệu: ${field}`)
+        return NextResponse.json({
+          error: `❌ Thiếu trường dữ liệu "${field}" trong Supabase cho mã ${symbol}`
+        }, { status: 400 })
+      }
     }
 
-    // 🚀 Gửi đến AI Flask server
+    const features = {
+      close: Number(row.close),
+      volume: Number(row.volume),
+      ma20: Number(row.ma20),
+      rsi: Number(row.rsi),
+      bb_upper: Number(row.bb_upper),
+      bb_lower: Number(row.bb_lower),
+      foreign_buy_value: Number(row.foreign_buy_value),
+      foreign_sell_value: Number(row.foreign_sell_value)
+    }
+
+    console.log(`📡 Gửi dữ liệu tới AI server: ${AI_SERVER_URL}/predict`)
+    console.log('🧠 Dữ liệu input:', features)
+
     const res = await fetch(`${AI_SERVER_URL}/predict`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -52,13 +76,14 @@ export async function GET(req: NextRequest) {
     })
 
     const aiResult = await res.json()
+    console.log('🤖 Phản hồi từ AI:', aiResult)
 
-    if (!res.ok) {
+    if (!res.ok || !aiResult.probability || !aiResult.recommendation) {
       console.error('❌ Lỗi từ AI server:', aiResult)
-      return NextResponse.json({ error: aiResult.error || 'Lỗi từ AI server' }, { status: 500 })
+      return NextResponse.json({ error: aiResult.error || '⚠️ AI không trả kết quả hợp lệ' }, { status: 500 })
     }
 
-    // 💾 Ghi lại kết quả dự đoán vào Supabase
+    // 📝 Cập nhật lại bảng ai_signals
     const { error: updateError } = await supabase
       .from('ai_signals')
       .update({
@@ -69,7 +94,9 @@ export async function GET(req: NextRequest) {
       .eq('date', date)
 
     if (updateError) {
-      console.error('❌ Lỗi ghi Supabase:', updateError.message)
+      console.error('❌ Không thể ghi kết quả vào Supabase:', updateError.message)
+    } else {
+      console.log('✅ Ghi kết quả AI thành công.')
     }
 
     return NextResponse.json({
@@ -80,7 +107,7 @@ export async function GET(req: NextRequest) {
     })
 
   } catch (err: any) {
-    console.error('🔥 Lỗi trong API /predict:', err.message || err)
-    return NextResponse.json({ error: 'Lỗi nội bộ server' }, { status: 500 })
+    console.error('🔥 Lỗi server predict:', err.message || err)
+    return NextResponse.json({ error: 'Lỗi nội bộ server.' }, { status: 500 })
   }
 }

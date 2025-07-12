@@ -19,56 +19,68 @@ interface Props {
 
 export default function AIAnalysisPanel({ symbol }: Props) {
   const [data, setData] = useState<any[]>([])
-  const [message, setMessage] = useState('')
   const [prediction, setPrediction] = useState<AIPrediction | null>(null)
   const [loading, setLoading] = useState(false)
+  const [fetching, setFetching] = useState(false)
   const [error, setError] = useState('')
+  const [empty, setEmpty] = useState(false)
 
   useEffect(() => {
     const fetchData = async () => {
       if (!symbol) return
+      setFetching(true)
+      setError('')
+      setEmpty(false)
+
       const { data, error } = await supabase
         .from('ai_signals')
         .select('*')
-        .eq('symbol', symbol)
+        .eq('symbol', symbol.toUpperCase())
         .order('date', { ascending: true })
         .limit(90)
 
       if (error) {
         console.error('❌ Lỗi lấy dữ liệu AI:', error.message)
-        setMessage('Không thể lấy dữ liệu AI.')
+        setError('Không thể lấy dữ liệu AI.')
+        setData([])
       } else if (!data || data.length === 0) {
-        setMessage('⚠️ Không tìm thấy dữ liệu AI cho mã này.')
+        setEmpty(true)
+        setData([])
       } else {
         setData(data)
-        setMessage('')
       }
+
+      setFetching(false)
     }
 
     fetchData()
   }, [symbol])
 
   useEffect(() => {
-    const fetchPrediction = async () => {
-      if (!symbol) return
-      setLoading(true)
-      setError('')
-      try {
-        const res = await fetch(`/api/predict?symbol=${symbol}`)
-        const json = await res.json()
-        if (res.ok) {
-          setPrediction(json)
-        } else {
-          setError(json.error || 'Lỗi khi gọi AI.')
-        }
-      } catch {
-        setError('❌ Không thể kết nối tới AI server.')
+  const fetchPrediction = async () => {
+    if (!symbol) return
+    setLoading(true)
+    setError('')
+    try {
+      const url = `/api/predict?symbol=${encodeURIComponent(symbol.toUpperCase())}`
+      console.log("📡 Fetching AI predict:", url)
+      const res = await fetch(url)
+      const json = await res.json()
+      if (res.ok) {
+        setPrediction(json)
+      } else {
+        console.error("❌ Lỗi từ server AI:", json)
+        setError(json.error || 'Lỗi khi gọi AI.')
       }
-      setLoading(false)
+    } catch (e) {
+      console.error("🔥 Lỗi fetch AI:", e)
+      setError('❌ Không thể kết nối tới AI server.')
     }
+    setLoading(false)
+  }
 
-    fetchPrediction()
-  }, [symbol])
+  fetchPrediction()
+}, [symbol])
 
   const formatDate = (d: string) => {
     const date = new Date(d)
@@ -100,16 +112,17 @@ export default function AIAnalysisPanel({ symbol }: Props) {
     <div className="space-y-8">
       <h2 className="text-2xl font-bold">🧠 AI Phân tích cổ phiếu</h2>
 
-      {loading && <p className="text-sm text-gray-400">Đang phân tích...</p>}
+      {loading && <p className="text-sm text-gray-400">⏳ Đang phân tích AI...</p>}
+      {fetching && <p className="text-sm text-gray-400">⏳ Đang tải dữ liệu lịch sử...</p>}
       {error && <p className="text-red-500 text-sm">{error}</p>}
-      {message && <p className="text-red-500 text-sm">{message}</p>}
+      {empty && !fetching && <p className="text-yellow-500 text-sm">⚠️ Không có dữ liệu AI cho mã này.</p>}
 
       {prediction && (
         <div className="border p-4 rounded bg-white/5 text-white">
           <p>📅 Ngày: <strong>{prediction.date ? new Date(prediction.date).toLocaleDateString('vi-VN') : '—'}</strong></p>
           <p>📊 Xác suất thắng: <strong>{prediction.probability != null ? (prediction.probability * 100).toFixed(2) + '%' : '—'}</strong></p>
           <p>
-            🤖 AI Gợi ý:{" "}
+            🤖 AI Gợi ý: {" "}
             <strong className={
               prediction.recommendation === 'BUY'
                 ? 'text-green-400'

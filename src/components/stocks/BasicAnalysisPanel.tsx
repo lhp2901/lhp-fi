@@ -19,7 +19,6 @@ export default function BasicAnalysisPanel({ symbol, userId }: { symbol: string,
         .from("stock_entries")
         .select("*")
         .eq("symbol", symbol)
-        .eq("user_id", userId)
         .order("date", { ascending: true })
         .limit(90)
 

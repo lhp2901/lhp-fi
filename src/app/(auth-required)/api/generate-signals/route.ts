@@ -2,117 +2,100 @@ import { NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
 import { SMA, RSI, BollingerBands } from 'technicalindicators'
 
+// 🔐 Supabase dùng service role để bypass RLS
 const supabase = createClient(
   process.env.SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY! // cần quyền ghi vượt qua RLS
+  process.env.SUPABASE_SERVICE_ROLE_KEY!
 )
 
 const fixNull = (v: any) => (v === null || v === undefined ? 0 : v)
 
+// 📦 Lấy danh sách user_id từ bảng stock_entries
 async function getAllUserIds(): Promise<string[]> {
   const { data, error } = await supabase
     .from('stock_entries')
     .select('user_id')
     .not('user_id', 'is', null)
 
-  if (error) throw error
+  if (error) throw new Error(error.message)
   return Array.from(new Set(data.map((d: any) => d.user_id)))
 }
 
-async function fetchSymbolsForUser(userId: string): Promise<string[]> {
+// 🧠 Lấy các mã cổ phiếu của user
+async function getSymbolsByUser(userId: string): Promise<string[]> {
   const { data, error } = await supabase
     .from('stock_entries')
     .select('symbol')
     .eq('user_id', userId)
     .neq('symbol', null)
 
-  if (error) throw error
+  if (error) throw new Error(error.message)
   return Array.from(new Set(data.map((d: any) => d.symbol)))
 }
 
-async function fetchDataForSymbol(symbol: string, userId: string) {
+// 📅 Lấy dữ liệu của 1 mã
+async function fetchStockData(userId: string, symbol: string): Promise<any[]> {
   const { data, error } = await supabase
     .from('stock_entries')
     .select('*')
-    .eq('symbol', symbol)
     .eq('user_id', userId)
+    .eq('symbol', symbol)
     .order('date', { ascending: true })
 
-  if (error) throw error
-  return data || []
+  if (error) throw new Error(error.message)
+  return data ?? []
 }
 
+// 📈 Tính toán chỉ báo kỹ thuật
 function calculateIndicators(data: any[]) {
   const closes = data.map(d => fixNull(d.close))
   return {
     ma20: SMA.calculate({ period: 20, values: closes }),
     rsi: RSI.calculate({ period: 14, values: closes }),
-    bb: BollingerBands.calculate({ period: 20, stdDev: 2, values: closes }),
+    bb: BollingerBands.calculate({ period: 20, stdDev: 2, values: closes })
   }
 }
 
-function enrichData(data: any[], indicators: any, userId: string) {
+// ✨ Tạo tín hiệu AI cho từng dòng
+function enrichWithSignals(data: any[], indicators: any, userId: string) {
   const { ma20, rsi, bb } = indicators
-  const startIdx = data.length - ma20.length
-  const rows = []
+  const offset = data.length - ma20.length
+  const enriched = []
 
-  for (let i = startIdx; i < data.length; i++) {
-    const row = data[i]
+  for (let i = offset; i < data.length - 3; i++) {
+    const curr = data[i]
     const future = data[i + 3]
+    const gain = (future?.close && curr?.close) ? (future.close - curr.close) / curr.close : null
 
-    const gain = (future?.close && row?.close)
-      ? (future.close - row.close) / row.close
-      : null
-
-    const label = typeof gain === 'number' ? gain > 0.03 : null
-
-    rows.push({
+    enriched.push({
       user_id: userId,
-      symbol: row.symbol,
-      date: row.date,
-      close: fixNull(row.close),
-      volume: fixNull(row.volume),
-      ma20: ma20[i - startIdx],
-      rsi: rsi[i - startIdx],
-      bb_upper: bb[i - startIdx]?.upper ?? 0,
-      bb_lower: bb[i - startIdx]?.lower ?? 0,
-      foreign_buy_value: fixNull(row.foreign_buy_value),
-      foreign_sell_value: fixNull(row.foreign_sell_value),
+      symbol: curr.symbol,
+      date: curr.date,
+      close: fixNull(curr.close),
+      volume: fixNull(curr.volume),
+      ma20: ma20[i - offset],
+      rsi: rsi[i - offset],
+      bb_upper: bb[i - offset]?.upper ?? 0,
+      bb_lower: bb[i - offset]?.lower ?? 0,
+      foreign_buy_value: fixNull(curr.foreign_buy_value),
+      foreign_sell_value: fixNull(curr.foreign_sell_value),
       future_gain_3d: gain,
-      label_win: label,
+      label_win: typeof gain === 'number' ? gain > 0.03 : null
     })
   }
 
-  return rows
+  return enriched
 }
 
-async function insertAISignals(rows: any[]) {
-  let successCount = 0
-  for (const row of rows) {
-    const { error } = await supabase.from('ai_signals').upsert(
-      {
-        user_id: row.user_id,
-        symbol: row.symbol,
-        date: row.date,
-        close: row.close,
-        volume: row.volume,
-        ma20: row.ma20,
-        rsi: row.rsi,
-        bb_upper: row.bb_upper,
-        bb_lower: row.bb_lower,
-        foreign_buy_value: row.foreign_buy_value,
-        foreign_sell_value: row.foreign_sell_value,
-        future_gain_3d: row.future_gain_3d,
-        label_win: row.label_win,
-      },
-      { onConflict: 'user_id,date,symbol' }
-    )
+// 💾 Ghi dữ liệu vào bảng ai_signals (upsert)
+async function insertSignals(data: any[]) {
+  if (data.length === 0) return
 
-    if (!error) successCount++
-    else console.error(`❌ Insert lỗi ${row.symbol} (${row.user_id}) ngày ${row.date}:`, error.message)
-  }
+  const { error } = await supabase.from('ai_signals').upsert(data, {
+    onConflict: 'user_id,date,symbol'
+  })
 
-  console.log(`✅ Ghi thành công ${successCount}/${rows.length} dòng.`)
+  if (error) throw new Error(error.message)
 }
 
 export async function POST() {
@@ -120,32 +103,35 @@ export async function POST() {
     console.log('🚀 Bắt đầu sinh tín hiệu AI...')
 
     const userIds = await getAllUserIds()
-    console.log(`👤 Tổng số user cần xử lý: ${userIds.length}`)
+    console.log(`👤 Tổng số user: ${userIds.length}`)
 
     for (const userId of userIds) {
-      console.log(`🎯 User: ${userId}`)
-      const symbols = await fetchSymbolsForUser(userId)
+      console.log(`🎯 Xử lý user: ${userId}`)
+
+      const symbols = await getSymbolsByUser(userId)
 
       for (const symbol of symbols) {
-        console.log(`📈 Đang xử lý ${symbol}...`)
-        const raw = await fetchDataForSymbol(symbol, userId)
+        console.log(`📈 Xử lý mã: ${symbol}`)
 
-        if (raw.length < 30) {
-          console.log(`⚠️ Bỏ qua ${symbol} vì không đủ dữ liệu (${raw.length})`)
+        const rawData = await fetchStockData(userId, symbol)
+        if (rawData.length < 30) {
+          console.log(`⚠️ Bỏ qua ${symbol}: không đủ dữ liệu (${rawData.length})`)
           continue
         }
 
-        const indicators = calculateIndicators(raw)
-        const enriched = enrichData(raw, indicators, userId)
-        await insertAISignals(enriched)
-        console.log(`✅ Done ${symbol}: ${enriched.length} dòng.`)
+        const indicators = calculateIndicators(rawData)
+        const enriched = enrichWithSignals(rawData, indicators, userId)
+        await insertSignals(enriched)
+
+        console.log(`✅ Ghi ${enriched.length} dòng cho ${symbol}`)
       }
     }
 
-    console.log('🏁 HOÀN TẤT! Đã sinh tín hiệu cho tất cả user.')
-    return NextResponse.json({ message: '✅ Đã sinh tín hiệu AI cho toàn bộ user.' })
-  } catch (error: any) {
-    console.error('🔥 Lỗi trong generate-signals:', error.message || error)
-    return NextResponse.json({ error: error.message || 'Lỗi không xác định' }, { status: 500 })
+    console.log('🏁 Hoàn tất sinh tín hiệu cho tất cả user.')
+    return NextResponse.json({ message: '✅ Sinh tín hiệu AI thành công!' })
+
+  } catch (err: any) {
+    console.error('🔥 Lỗi generate-signals:', err.message || err)
+    return NextResponse.json({ error: err.message || 'Lỗi không xác định' }, { status: 500 })
   }
 }
