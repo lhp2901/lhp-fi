@@ -20,20 +20,17 @@ export default function LoginPage() {
           className="object-cover"
           priority
         />
-        {/* Overlay đen nhẹ để chữ bên phải nổi bật hơn */}
-        <div className="absolute inset-0 bg-black/20" />
+        {/* Overlay đen nhẹ */}
+        <div className="absolute inset-0 bg-black/30"></div>
       </div>
 
       {/* RIGHT LOGIN PANEL */}
-      <div className="w-full md:w-1/2 flex items-center justify-center px-6 md:px-10 py-12">
-        <div className="w-full max-w-md bg-gradient-to-br from-[#1e293b] to-[#334155] p-8 md:p-10 rounded-2xl shadow-2xl border border-white/10">
-          <h1 className="text-4xl font-extrabold text-center mb-6 text-white tracking-wide">LHP-Fi</h1>
+      <div className="w-full md:w-1/2 flex items-center justify-center p-8">
+        <div className="w-full max-w-md bg-gradient-to-br from-[#1e293b] to-[#334155] p-8 rounded-2xl shadow-xl border border-white/10">
+          <h1 className="text-3xl font-bold text-center mb-6 text-white">LHP-Fi</h1>
           <AuthForm title="" buttonLabel="Đăng nhập" />
           <p className="text-sm text-center text-slate-300 mt-4">
-            Chưa có tài khoản?{' '}
-            <a href="/register" className="text-sky-400 hover:underline font-medium">
-              Đăng ký ngay
-            </a>
+            Chưa có tài khoản? <a href="/register" className="text-sky-400 hover:underline">Đăng ký ngay</a>
           </p>
         </div>
       </div>
