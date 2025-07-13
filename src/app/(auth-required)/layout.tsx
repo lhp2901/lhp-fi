@@ -5,9 +5,8 @@ import { useRouter } from 'next/navigation'
 import dynamic from 'next/dynamic'
 import type { Session } from '@supabase/supabase-js'
 
-// ⚡ Load Sidebar client-side để tránh lỗi SSR
+// Load Sidebar sau khi render client
 const Sidebar = dynamic(() => import('@/components/Sidebar'), { ssr: false })
-// ⚡ Tạo client Supabase khi cần
 const getSupabaseClient = () => import('@/lib/supabase').then(mod => mod.supabase)
 
 export default function ProtectedLayout({ children }: { children: React.ReactNode }) {
@@ -21,7 +20,7 @@ export default function ProtectedLayout({ children }: { children: React.ReactNod
       const { data } = await supabase.auth.getSession()
 
       if (!data.session) {
-        router.replace('/login') // Dùng replace để không giữ lại trong lịch sử
+        router.replace('/login')
       } else {
         setSession(data.session)
       }
@@ -32,12 +31,14 @@ export default function ProtectedLayout({ children }: { children: React.ReactNod
     checkAuth()
   }, [router])
 
-  if (loading) return null // 👈 có thể thay bằng spinner nếu muốn
+  if (loading) return null // 👈 Có thể thay bằng spinner loading nếu muốn
 
   return (
     <div className="flex min-h-screen bg-gradient-to-br from-[#0F172A] to-[#1E293B] text-white">
       <Sidebar />
-      <main className="flex-1 p-6">{children}</main>
+      <main className="flex-1 overflow-x-hidden overflow-y-auto px-4 py-6 sm:px-6 lg:px-8">
+        <div className="max-w-screen-2xl mx-auto">{children}</div>
+      </main>
     </div>
   )
 }
