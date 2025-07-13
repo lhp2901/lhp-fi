@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 
-const AI_SERVER_URL = process.env.AI_SERVER_URL || 'https://lhp-ai-server.onrender.com'
+const AI_SERVER_URL = process.env.AI_SERVER_URL || 'http://localhost:10000'
 
 export async function GET(req: NextRequest) {
   const { searchParams } = new URL(req.url)
