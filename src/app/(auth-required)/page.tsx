@@ -26,6 +26,22 @@ export default function HomePage() {
   const [transactions, setTransactions] = useState<any[]>([])
   const [editingTx, setEditingTx] = useState<any | null>(null)
   const [showForm, setShowForm] = useState(false)
+  const [currentTime, setCurrentTime] = useState(new Date())
+
+  // ⏱️ Cập nhật thời gian thực
+  useEffect(() => {
+    const timer = setInterval(() => {
+      setCurrentTime(new Date())
+    }, 1000)
+    return () => clearInterval(timer)
+  }, [])
+
+  const getTimeColor = (hour: number) => {
+  if (hour >= 5 && hour < 12) return 'text-yellow-400'     // Sáng sớm
+  if (hour >= 12 && hour < 17) return 'text-sky-400'        // Buổi chiều
+  if (hour >= 17 && hour < 21) return 'text-emerald-300'    // Buổi tối
+  return 'text-rose-400'                                    // Khuya
+}
 
   // ✅ Kiểm tra đăng nhập
   useEffect(() => {
@@ -80,18 +96,27 @@ export default function HomePage() {
 
   return (
     <div className="space-y-6">
-      {/* 🎯 Marquee */}
-      <div className="relative w-full h-10 overflow-hidden bg-black rounded-md border border-gray-700">
-        <div
-          className="absolute whitespace-nowrap text-white font-semibold text-lg animate-marquee"
-          style={{ animationDuration: '20s' }}
-        >
-          {quotes.map((quote, idx) => (
-            <span key={idx} className="mr-10">
-              {quote}
-            </span>
-          ))}
+      {/* 🎯 Marquee mới – tách đồng hồ và chữ chạy */}
+      <div className="relative w-full h-10 bg-black rounded-md border border-gray-700 flex items-center px-4">
+        {/* 💬 Quotes chạy bên trái (phần còn lại) */}
+        <div className="absolute left-4 right-[180px] top-0 bottom-0 overflow-hidden flex items-center">
+          <div
+            className="whitespace-nowrap text-white font-semibold text-lg animate-marquee"
+            style={{ animationDuration: '20s' }}
+          >
+            {quotes.map((quote, idx) => (
+              <span key={idx} className="mr-10">
+                {quote}
+              </span>
+            ))}
+          </div>
         </div>
+
+        {/* ⏰ Đồng hồ cố định bên phải */}
+        <div className={`ml-auto z-10 font-bold text-sm font-mono flex items-center gap-2 ${getTimeColor(currentTime.getHours())}`}>
+        <span>📅 {currentTime.toLocaleDateString('vi-VN')}</span>
+        <span>⏰ {currentTime.toLocaleTimeString('vi-VN')}</span>
+      </div>
       </div>
 
       {/* 🔥 Tabs */}
@@ -140,22 +165,22 @@ export default function HomePage() {
         <section className="space-y-6 mt-4">
           <div className="bg-white/5 border border-white/10 rounded-xl p-4">
             <div className="flex items-center justify-between mb-4">
-            <h2 className="text-lg font-semibold text-teal-300">📋 Lịch sử giao dịch</h2>
-            <div className="flex gap-4 items-center">
-              <button
-                onClick={() => setShowForm(!showForm)}
-                className="text-blue-400 hover:underline"
-              >
-                {showForm ? '− Ẩn nhập liệu' : '+ Thêm giao dịch mới'}
-              </button>
-              <a
-                href="/portfolio/dashboard"
-                className="text-yellow-400 hover:underline text-sm flex items-center gap-1"
-              >
-                📊 Xem báo cáo
-              </a>
+              <h2 className="text-lg font-semibold text-teal-300">📋 Lịch sử giao dịch</h2>
+              <div className="flex gap-4 items-center">
+                <button
+                  onClick={() => setShowForm(!showForm)}
+                  className="text-blue-400 hover:underline"
+                >
+                  {showForm ? '− Ẩn nhập liệu' : '+ Thêm giao dịch mới'}
+                </button>
+                <a
+                  href="/portfolio/dashboard"
+                  className="text-yellow-400 hover:underline text-sm flex items-center gap-1"
+                >
+                  📊 Xem báo cáo
+                </a>
+              </div>
             </div>
-          </div>
 
             {editingTx ? (
               <EditTransactionForm

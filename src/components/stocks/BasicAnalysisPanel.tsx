@@ -42,7 +42,7 @@ export default function BasicAnalysisPanel({ symbol, userId }: { symbol: string,
 
   const formatDate = (d: string) => new Date(d).toLocaleDateString("vi-VN")
   const formatNumber = (num: number | null | undefined) =>
-  typeof num === 'number' ? num.toLocaleString("vi-VN") : '—'
+  typeof num === 'number' ? `${num.toLocaleString("vi-VN")} (tỷ)` : '—'
 
   const getVolumeSpikeDays = (data: any[]) => {
     const spikes = new Set()
@@ -89,13 +89,8 @@ export default function BasicAnalysisPanel({ symbol, userId }: { symbol: string,
 
   const data = calculateIndicators(rawData)
 
-  if (message) {
-    return <p className="text-red-500">{message}</p>
-  }
-
-  if (!data.length) {
-    return <p className="text-gray-400">⏳ Đang tải dữ liệu...</p>
-  }
+  if (message) return <p className="text-red-500">{message}</p>
+  if (!data.length) return <p className="text-gray-400">⏳ Đang tải dữ liệu...</p>
 
   const volumeSpikes = getVolumeSpikeDays(rawData)
   const sharkAlerts = getForeignBuySpikes(rawData)
@@ -112,56 +107,65 @@ export default function BasicAnalysisPanel({ symbol, userId }: { symbol: string,
         : "🟡 Gợi ý: GIỮ (Không rõ xu hướng)"
     : "⏳ Đang phân tích..."
 
+  // Gợi ý + tín hiệu
+  const getSignal = (row: any) => {
+    if (row.rsi != null && row.rsi < 30 && row.close < row.ma20) return "🟢 Gom Hàng"
+    if (volumeSpikes.has(row.date)) return "📈 Volume Spike"
+    if (sharkAlerts.has(row.date)) return "🦈 Cá mập mua"
+    return "👀 Quan sát"
+  }
+
+  const getAdvice = (row: any) => {
+  if (row.rsi != null && row.rsi < 30 && row.close < row.ma20) return "🟢 Mua"
+  if (row.rsi != null && row.rsi > 70 && row.close > row.ma20) return "🔴 Bán"
+  return "🔵 Giữ"
+}
+
   return (
     <div className="pt-4">
       <h2 className="text-xl font-semibold mb-2">📊 Phân tích cổ phiếu chuyên sâu</h2>
 
-      {message && <p className="text-red-500 mb-4">{message}</p>}
+      <div className="mb-6">
+        <h3 className="text-lg font-semibold mb-2">💰 Phân tích lời/lỗ</h3>
+        <p>Giá đầu: <strong>{first.close}</strong> – Giá hiện tại: <strong>{last.close}</strong></p>
+        <p>Lợi nhuận: <strong className={parseFloat(priceChange) >= 0 ? 'text-green-500' : 'text-red-500'}>
+          {priceChange}%</strong> – {trend}</p>
+        <p className="mt-4 text-lg font-bold">{aiSignal}</p>
+      </div>
 
-      {data.length > 0 && (
-        <>
-          <div className="mb-6">
-            <h3 className="text-lg font-semibold mb-2">💰 Phân tích lời/lỗ</h3>
-            <p>Giá đầu: <strong>{first.close}</strong> – Giá hiện tại: <strong>{last.close}</strong></p>
-            <p>Lợi nhuận: <strong className={parseFloat(priceChange) >= 0 ? 'text-green-500' : 'text-red-500'}>
-              {priceChange}%</strong> – {trend}</p>
-            <p className="mt-4 text-lg font-bold">{aiSignal}</p>
-          </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <div>
-              <h3 className="font-medium mb-2">📉 Biểu đồ giá + MA + BB</h3>
-              <ResponsiveContainer width="100%" height={300}>
-                <LineChart data={data}>
-                  <CartesianGrid strokeDasharray="3 3" />
-                  <XAxis dataKey="date" tickFormatter={formatDate} />
-                  <YAxis />
-                  <Tooltip />
-                  <Legend />
-                  <Line type="monotone" dataKey="close" stroke="#4f46e5" name="Close" />
-                  <Line type="monotone" dataKey="ma20" stroke="#22c55e" name="MA20" />
-                  <Line type="monotone" dataKey="upperBB" stroke="#f97316" name="Upper BB" />
-                  <Line type="monotone" dataKey="lowerBB" stroke="#f97316" name="Lower BB" />
-                </LineChart>
-              </ResponsiveContainer>
-            </div>
-            <div>
-              <h3 className="font-medium mb-2">💸 Dòng tiền khối ngoại</h3>
-              <ResponsiveContainer width="100%" height={300}>
-                <BarChart data={data}>
-                  <CartesianGrid strokeDasharray="3 3" />
-                  <XAxis dataKey="date" tickFormatter={formatDate} />
-                  <YAxis />
-                  <Tooltip />
-                  <Legend />
-                  <Bar dataKey="foreign_buy_value" fill="#16a34a" name="Mua" />
-                  <Bar dataKey="foreign_sell_value" fill="#dc2626" name="Bán" />
-                </BarChart>
-              </ResponsiveContainer>
-            </div>
-          </div>
-
-          <div className="mt-10">
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+        <div>
+          <h3 className="font-medium mb-2">📉 Biểu đồ giá + MA + BB</h3>
+          <ResponsiveContainer width="100%" height={300}>
+            <LineChart data={data}>
+              <CartesianGrid strokeDasharray="3 3" />
+              <XAxis dataKey="date" tickFormatter={formatDate} />
+              <YAxis />
+              <Tooltip />
+              <Legend />
+              <Line type="monotone" dataKey="close" stroke="#4f46e5" name="Close" />
+              <Line type="monotone" dataKey="ma20" stroke="#22c55e" name="MA20" />
+              <Line type="monotone" dataKey="upperBB" stroke="#f97316" name="Upper BB" />
+              <Line type="monotone" dataKey="lowerBB" stroke="#f97316" name="Lower BB" />
+            </LineChart>
+          </ResponsiveContainer>
+        </div>
+        <div>
+          <h3 className="font-medium mb-2">💸 Dòng tiền khối ngoại</h3>
+          <ResponsiveContainer width="100%" height={300}>
+            <BarChart data={data}>
+              <CartesianGrid strokeDasharray="3 3" />
+              <XAxis dataKey="date" tickFormatter={formatDate} />
+              <YAxis />
+              <Tooltip />
+              <Legend />
+              <Bar dataKey="foreign_buy_value" fill="#16a34a" name="Mua" />
+              <Bar dataKey="foreign_sell_value" fill="#dc2626" name="Bán" />
+            </BarChart>
+          </ResponsiveContainer>
+        </div>
+      </div>
+        <div className="mt-10">
             <h3 className="font-medium mb-2">📊 RSI</h3>
             <ResponsiveContainer width="100%" height={200}>
               <LineChart data={data}>
@@ -172,50 +176,47 @@ export default function BasicAnalysisPanel({ symbol, userId }: { symbol: string,
               </LineChart>
             </ResponsiveContainer>
           </div>
-
-          <div className="mt-10">
-            <h3 className="text-lg font-semibold mb-3">📋 Dữ liệu gần đây</h3>
-            <div className="overflow-auto border border-gray-700 rounded">
-              <table className="min-w-full text-sm">
-                <thead className="bg-gray-800 text-white">
-                  <tr>
-                    <th className="px-3 py-2 text-left">Ngày</th>
-                    <th className="px-3 py-2 text-right">Close</th>
-                    <th className="px-3 py-2 text-right">Volume</th>
-                    <th className="px-3 py-2 text-right">Mua</th>
-                    <th className="px-3 py-2 text-right">Bán</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {data.slice(-30).reverse().map((row, i) => (
-                    <tr key={i} className="border-b border-gray-700">
-                      <td className="px-3 py-2">{formatDate(row.date)}</td>
-                      <td className="px-3 py-2 text-right">{row.close}</td>
-                      <td
-                        className={`px-3 py-2 text-right ${volumeSpikes.has(row.date)
-                          ? "bg-yellow-200 text-black font-bold"
-                          : ""
-                          }`}
-                      >
-                        {formatNumber(row.volume)}
-                      </td>
-                      <td
-                        className={`px-3 py-2 text-right ${sharkAlerts.has(row.date)
-                          ? "bg-green-300 text-black font-bold"
-                          : ""
-                          }`}
-                      >
-                        {formatNumber(row.foreign_buy_value)}
-                      </td>
-                      <td className="px-3 py-2 text-right">{formatNumber(row.foreign_sell_value)}</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          </div>
-        </>
-      )}
+      <div className="mt-10">
+        <h3 className="text-lg font-semibold mb-3">📋 Dữ liệu gần đây</h3>
+        <div className="overflow-auto border border-gray-700 rounded">
+          <table className="min-w-full text-sm">
+            <thead className="bg-gray-800 text-white">
+              <tr>
+                <th className="px-3 py-2 text-left">Ngày</th>
+                <th className="px-3 py-2 text-right">Close</th>
+                <th className="px-3 py-2 text-right">RSI</th>
+                <th className="px-3 py-2 text-right">Volume</th>
+                <th className="px-3 py-2 text-right">MA20</th>
+                <th className="px-3 py-2 text-right">Mua</th>
+                <th className="px-3 py-2 text-right">Bán</th>
+                <th className="px-3 py-2 text-center">Tín hiệu</th>
+                <th className="px-3 py-2 text-center">Gợi ý</th>
+              </tr>
+            </thead>
+            <tbody>
+              {data.slice(-30).reverse().map((row, i) => (
+                <tr key={i} className="border-b border-gray-700">
+                  <td className="px-3 py-2">{formatDate(row.date)}</td>
+                  <td className="px-3 py-2 text-right">{formatNumber(row.close)}</td>
+                  <td className={`px-3 py-2 text-right ${row.rsi != null && row.rsi < 30 ? "text-green-400 font-bold" : row.rsi > 70 ? "text-red-500 font-bold" : ""}`}>
+                    {row.rsi ? row.rsi.toFixed(2) : "—"}
+                  </td>
+                  <td className={`px-3 py-2 text-right ${volumeSpikes.has(row.date) ? "bg-yellow-200 text-black font-bold" : ""}`}>
+                    {formatNumber(row.volume)}
+                  </td>
+                  <td className="px-3 py-2 text-right">{row.ma20 ? row.ma20.toFixed(2) : "—"}</td>
+                  <td className={`px-3 py-2 text-right ${sharkAlerts.has(row.date) ? "bg-green-300 text-black font-bold" : ""}`}>
+                    {formatNumber(row.foreign_buy_value)}
+                  </td>
+                  <td className="px-3 py-2 text-right">{formatNumber(row.foreign_sell_value)}</td>
+                  <td className="px-3 py-2 text-center">{getSignal(row)}</td>
+                  <td className="px-3 py-2 text-center font-semibold">{getAdvice(row)}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </div>
     </div>
   )
 }
