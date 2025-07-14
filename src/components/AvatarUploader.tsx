@@ -74,20 +74,25 @@ export default function AvatarUploader({ session }: AvatarUploaderProps) {
 
   // ✅ Lấy URL phù hợp từ Supabase storage hoặc fallback ngoài
   const getAvatarUrl = (
-    avatar: string | null,
-    fullName: string,
-    email: string
-  ): string => {
-    if (!avatar) {
-      return `https://ui-avatars.com/api/?name=${encodeURIComponent(fullName || email)}`
-    }
-
-    return avatar.startsWith('http')
-      ? avatar
-      : supabase.storage.from('avatars').getPublicUrl(avatar).data.publicUrl
+  avatar: string | null,
+  fullName: string,
+  email?: string
+): string => {
+  const fallbackName = fullName || email || 'Người dùng'
+  if (!avatar) {
+    return `https://ui-avatars.com/api/?name=${encodeURIComponent(fallbackName)}`
   }
 
-  const publicUrl = getAvatarUrl(avatarUrl, fullName, session.user.email)
+  return avatar.startsWith('http')
+    ? avatar
+    : supabase.storage.from('avatars').getPublicUrl(avatar).data.publicUrl
+}
+
+  const publicUrl = getAvatarUrl(
+  avatarUrl,
+  fullName,
+  session.user.email ?? '' // fallback nếu undefined
+)
 
   return (
     <div className="flex flex-col items-center gap-2 text-white text-sm mb-6">
