@@ -102,7 +102,7 @@ export default function AvatarUploader({ session }: AvatarUploaderProps) {
           alt="Avatar"
           className="rounded-full cursor-pointer object-cover"
           fill
-          sizes="80px"
+          sizes="(max-width: 768px) 80px"
           onClick={() => fileInputRef.current?.click()}
         />
         <input
