@@ -42,7 +42,7 @@ export default function BasicAnalysisPanel({ symbol, userId }: { symbol: string,
 
   const formatDate = (d: string) => new Date(d).toLocaleDateString("vi-VN")
   const formatNumber = (num: number | null | undefined) =>
-  typeof num === 'number' ? `${num.toLocaleString("vi-VN")} (tỷ)` : '—'
+  typeof num === 'number' ? `${num.toLocaleString("vi-VN")} ` : '—'
 
   const getVolumeSpikeDays = (data: any[]) => {
     const spikes = new Set()
@@ -206,9 +206,9 @@ export default function BasicAnalysisPanel({ symbol, userId }: { symbol: string,
                   </td>
                   <td className="px-3 py-2 text-right">{row.ma20 ? row.ma20.toFixed(2) : "—"}</td>
                   <td className={`px-3 py-2 text-right ${sharkAlerts.has(row.date) ? "bg-green-300 text-black font-bold" : ""}`}>
-                    {formatNumber(row.foreign_buy_value)}
+                    {formatNumber(row.foreign_buy_value)} (tỷ)
                   </td>
-                  <td className="px-3 py-2 text-right">{formatNumber(row.foreign_sell_value)}</td>
+                  <td className="px-3 py-2 text-right">{formatNumber(row.foreign_sell_value)} (tỷ)</td>
                   <td className="px-3 py-2 text-center">{getSignal(row)}</td>
                   <td className="px-3 py-2 text-center font-semibold">{getAdvice(row)}</td>
                 </tr>
