@@ -2,6 +2,7 @@
 
 import { useRef, useState, useEffect } from 'react'
 import Image from 'next/image'
+import Link from 'next/link'
 import { supabase } from '@/lib/supabase'
 import { Session } from '@supabase/supabase-js'
 
@@ -95,29 +96,35 @@ export default function AvatarUploader({ session }: AvatarUploaderProps) {
 )
 
   return (
-    <div className="flex flex-col items-center gap-2 text-white text-sm mb-6">
-      <div className="relative w-20 h-20">
-        <Image
-          src={publicUrl}
-          alt="Avatar"
-          className="rounded-full cursor-pointer object-cover"
-          fill
-          sizes="(max-width: 768px) 80px"
-          onClick={() => fileInputRef.current?.click()}
-        />
-        <input
-          type="file"
-          accept="image/*"
-          className="hidden"
-          ref={fileInputRef}
-          onChange={handleAvatarChange}
-        />
-      </div>
-      {loading ? (
-        <span className="text-xs text-gray-400">Đang tải lên...</span>
-      ) : (
-        <span>{fullName || session.user.email}</span>
-      )}
+  <div className="flex flex-col items-center gap-2 text-white text-sm mb-6">
+    <div className="relative w-20 h-20">
+      <Image
+        src={publicUrl}
+        alt="Avatar"
+        className="rounded-full cursor-pointer object-cover"
+        fill
+        sizes="(max-width: 768px) 80px"
+        onClick={() => fileInputRef.current?.click()}
+      />
+      <input
+        type="file"
+        accept="image/*"
+        className="hidden"
+        ref={fileInputRef}
+        onChange={handleAvatarChange}
+      />
     </div>
-  )
+
+    {loading ? (
+      <span className="text-xs text-gray-400">Đang tải lên...</span>
+    ) : (
+      <Link
+        href="/profile"
+        className="hover:underline text-sm text-white cursor-pointer"
+      >
+        {fullName || session.user.email}
+      </Link>
+    )}
+  </div>
+)
 }
