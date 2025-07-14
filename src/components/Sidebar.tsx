@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react'
 import { usePathname, useRouter } from 'next/navigation'
 import { supabase } from '@/lib/supabase'
 import { Session } from '@supabase/supabase-js'
+import AvatarUploader from '@/components/AvatarUploader'
 
 export default function Sidebar() {
   const [open, setOpen] = useState(true)
@@ -46,8 +47,9 @@ export default function Sidebar() {
           ☰
         </button>
 
+        {open && <AvatarUploader session={session} />}
+
         <nav className="space-y-2">
-          {/* Dashboard */}
           <button
             onClick={() => router.push('/')}
             className={`w-full text-left px-3 py-2 rounded-md text-sm font-medium transition ${
@@ -57,7 +59,6 @@ export default function Sidebar() {
             {open ? '📊 Dashboard' : '📊'}
           </button>
 
-          {/* Phân tích (Dropdown) */}
           <div>
             <button
               onClick={() => setShowAnalysisMenu(!showAnalysisMenu)}
@@ -86,20 +87,19 @@ export default function Sidebar() {
                 >
                   • Thị Trường
                 </button>
-               
               </div>
             )}
           </div>
-                <button
+
+          <button
             onClick={() => router.push('/portfolio')}
             className={`w-full text-left px-3 py-2 rounded-md text-sm font-medium transition ${
               isActive('/portfolio') ? 'bg-indigo-600 text-white' : 'text-slate-200 hover:bg-white/10'
             }`}
           >
             {open ? '🎯 Giao dịch' : '🎯'}
-              </button>
-          {/* Cài đặt */}
-          
+          </button>
+
           <button
             onClick={() => router.push('/settings')}
             className={`w-full text-left px-3 py-2 rounded-md text-sm font-medium transition ${
