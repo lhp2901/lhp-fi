@@ -88,6 +88,7 @@ export default function SettingsPage() {
       <div className="mt-10 border-t pt-6">
         <h2 className="text-lg font-semibold mb-3">🤖 Quy trình xử lý tín hiệu AI</h2>
 
+       <div className="flex space-x-4 mt-4">
         <button
           onClick={handleGenerateSignals}
           disabled={generating}
@@ -95,6 +96,30 @@ export default function SettingsPage() {
         >
           {generating ? '🧠 Đang xử lý...' : '🧠 Sinh tín hiệu AI'}
         </button>
+
+        <button
+          onClick={async () => {
+            setAiMessage('🚀 Đang gọi AI server chạy toàn bộ quy trình...')
+            try {
+              const res = await fetch('/api/ai/run', { method: 'POST' })
+              const data = await res.json()
+              if (res.ok) {
+                setAiMessage('✅ AI server đã chạy toàn bộ pipeline thành công!')
+              } else {
+                throw new Error(data.error || 'Lỗi không rõ')
+              }
+            } catch (err) {
+              console.error('❌ Lỗi khi gọi run_daily:', err)
+              setAiMessage('❌ Không thể gọi AI server hoặc gặp lỗi.')
+            }
+          }}
+          disabled={generating}
+          className="px-4 py-2 bg-red-600 text-white rounded hover:bg-red-700 disabled:opacity-50"
+        >
+          🚀 Chạy toàn bộ AI Server
+        </button>
+      </div>
+
         <div className="mt-4 space-y-3">
           <button
             onClick={handleResetAI}
@@ -103,7 +128,7 @@ export default function SettingsPage() {
           >
             🔄 Làm mới dữ liệu AI
           </button>
-
+                  
           {aiMessage && (
             <p className="text-sm text-blue-400">{aiMessage}</p>
           )}

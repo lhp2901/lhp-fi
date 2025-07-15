@@ -8,6 +8,8 @@ import MarketAnalysisPage from './analysis/market-analysis/page'
 import TransactionList from '@/components/portfolio/TransactionList'
 import AddTransactionForm from '@/components/portfolio/AddTransactionForm'
 import EditTransactionForm from '@/components/portfolio/EditTransactionForm'
+import DashboardContent from '@/components/market-analysis/DashboardContent'
+
 
 const quotes = [
   'Đừng bao giờ đặt tất cả trứng vào cùng một giỏ.',
@@ -143,9 +145,8 @@ export default function HomePage() {
 
       {/* 💾 Nội dung từng tab */}
       {activeTab === 'dashboard' && (
-        <section className="text-slate-400 border border-white/10 p-4 rounded-xl bg-white/5">
-          <h2 className="text-lg font-semibold text-teal-300 mb-2">📊 Tổng quan tài chính</h2>
-          <p className="italic">Tính năng đang phát triển... Sẽ hiển thị số dư, lãi/lỗ, và biểu đồ hiệu suất AI.</p>
+        <section className="mt-4">
+          <DashboardContent />
         </section>
       )}
 

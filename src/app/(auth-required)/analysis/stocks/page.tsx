@@ -6,13 +6,14 @@ import { Button } from '@/components/ui/button'
 import BasicAnalysisPanel from '@/components/stocks/BasicAnalysisPanel'
 import AIAnalysisPanel from '@/components/stocks/AIAnalysisPanel'
 import PortfolioTable from '@/components/stocks/PortfolioTable'
+import StockAIChart from '@/components/stocks/StockAIChart'
 import type { PortfolioItem } from '@/components/stocks/PortfolioTable'
 
 export default function AnalysisPage() {
   const [userId, setUserId] = useState<string | null>(null)
   const [symbol, setSymbol] = useState('')
   const [symbols, setSymbols] = useState<string[]>([])
-  const [tab, setTab] = useState<'basic' | 'ai'>('basic')
+  const [tab, setTab] = useState<'basic' | 'ai' | 'chart'>('basic')
   const [portfolio, setPortfolio] = useState<PortfolioItem[]>([])
   const [portfolioDate, setPortfolioDate] = useState('')
   const [loadingPortfolio, setLoadingPortfolio] = useState(true)
@@ -41,7 +42,6 @@ export default function AnalysisPage() {
         if (!symbol && unique.length > 0) setSymbol(unique[0])
       }
 
-      // ✅ Gọi portfolio kèm userId
       try {
         const res = await fetch(`/api/portfolio?userId=${user.id}`)
         const json = await res.json()
@@ -90,16 +90,18 @@ export default function AnalysisPage() {
         <Button variant={tab === 'ai' ? 'default' : 'outline'} onClick={() => setTab('ai')}>
           Phân tích AI
         </Button>
+        <Button variant={tab === 'chart' ? 'default' : 'outline'} onClick={() => setTab('chart')}>
+          Biểu đồ AI
+        </Button>
       </div>
 
-      {/* ✅ Chỉ render khi đầy đủ dữ liệu cần thiết */}
       {tab === 'basic' ? (
         symbol && userId ? (
           <BasicAnalysisPanel symbol={symbol} userId={userId} />
         ) : (
           <p className="text-yellow-300">⏳ Đang tải dữ liệu phân tích cơ bản...</p>
         )
-      ) : (
+      ) : tab === 'ai' ? (
         <>
           {symbol ? (
             <AIAnalysisPanel symbol={symbol} />
@@ -112,6 +114,14 @@ export default function AnalysisPage() {
             loading={loadingPortfolio}
           />
         </>
+      ) : (
+        symbol ? (
+          <div className="rounded-xl border border-slate-700 bg-slate-900 p-4 shadow-xl">
+            <StockAIChart symbol={symbol.toUpperCase()} />
+          </div>
+        ) : (
+          <p className="text-yellow-300">⏳ Đang tải biểu đồ AI...</p>
+        )
       )}
     </div>
   )
