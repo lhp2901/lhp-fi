@@ -80,7 +80,6 @@ export default function SettingsPage() {
           </button>
         ))}
       </div>
-
       {activeTab === 'vnindex' && <ImportVNINDEX />}
       {activeTab === 'vn30' && <ImportVN30 />}
       {activeTab === 'stocks' && <ImportStocks />}
