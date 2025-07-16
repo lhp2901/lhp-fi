@@ -13,8 +13,11 @@ import {
   toUpperCaseTrim,
 } from '@/lib/utils'
 
-type FormData = {
-  
+import { supabase } from '@/lib/supabase'
+
+import { type User } from '@supabase/supabase-js'
+
+interface FormData {
   assetname: string
   category: string
   quantity: string
@@ -89,22 +92,25 @@ export default function EditTransactionForm({
   onCancel: () => void
   onSave: (form: any) => void
 }) {
-  const safeInitial: FormData = {
-    ...emptyForm,
-    ...initial,
-    quantity: initial?.quantity?.toLocaleString() || '',
-    buyprice: initial?.buyprice?.toLocaleString() || '',
-    currentprice: initial?.currentprice?.toLocaleString() || '',
-    sellprice: initial?.sellprice?.toLocaleString() || '',
-    sellfee: initial?.sellfee?.toLocaleString() || '',
-    tags: Array.isArray(initial?.tags) ? initial.tags.join(', ') : initial?.tags || '',
-    highconviction: !!initial?.highconviction,
-    issold: !!initial?.issold,
-    feepreset: initial?.feePreset || 'TCBS',
-  }
+  const [form, setForm] = useState<FormData>(() => {
+    const safeInitial: FormData = {
+      ...emptyForm,
+      ...initial,
+      quantity: initial?.quantity?.toLocaleString() || '',
+      buyprice: initial?.buyprice?.toLocaleString() || '',
+      currentprice: initial?.currentprice?.toLocaleString() || '',
+      sellprice: initial?.sellprice?.toLocaleString() || '',
+      sellfee: initial?.sellfee?.toLocaleString() || '',
+      tags: Array.isArray(initial?.tags) ? initial.tags.join(', ') : initial?.tags || '',
+      highconviction: !!initial?.highconviction,
+      issold: !!initial?.issold,
+      feepreset: initial?.feepreset || 'TCBS',
+    }
+    return safeInitial
+  })
 
-  const [form, setForm] = useState<FormData>(safeInitial)
   const [saving, setSaving] = useState(false)
+  const [userId, setUserId] = useState<string | null>(null)
 
   const quantity = parseNumber(form.quantity)
   const buyprice = parseNumber(form.buyprice)
@@ -113,6 +119,18 @@ export default function EditTransactionForm({
   const transactionfee = calculateFee(quantity, buyprice, feeRate)
   const pnl = calculatePnL(buyprice, currentprice, quantity)
   const pnlPercent = calculatePnLPercentage(buyprice, currentprice)
+
+  useEffect(() => {
+    const getUser = async () => {
+      const { data, error } = await supabase.auth.getUser()
+      if (error || !data?.user) {
+        console.error('❌ Không xác định được user:', error?.message)
+        return
+      }
+      setUserId(data.user.id)
+    }
+    getUser()
+  }, [])
 
   useEffect(() => {
     if (form.issold) {
@@ -145,25 +163,32 @@ export default function EditTransactionForm({
   }
 
   const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault()
-    setSaving(true)
+  e.preventDefault()
+  setSaving(true)
 
-    const updated = {
-      ...form,
-      assetname: toUpperCaseTrim(form.assetname),
-      quantity: parseNumber(form.quantity),
-      buyprice: parseNumber(form.buyprice),
-      currentprice: parseNumber(form.currentprice),
-      sellprice: form.issold ? parseNumber(form.sellprice) : null,
-      sellfee: form.issold ? parseNumber(form.sellfee) : null,
-      tags: splitTags(form.tags),
-      transactionfee,
-    }
-
-    await onSave(updated)
+  if (!userId) {
+    alert('❌ Chưa xác định được user.')
     setSaving(false)
+    return
   }
 
+  const updated = {
+    ...form,
+    user_id: userId,
+    assetname: toUpperCaseTrim(form.assetname),
+    quantity: parseNumber(form.quantity),
+    buyprice: parseNumber(form.buyprice),
+    currentprice: parseNumber(form.currentprice),
+    sellprice: form.issold ? parseNumber(form.sellprice) : null,
+    sellfee: form.issold ? parseNumber(form.sellfee) : null,
+    tags: splitTags(form.tags),
+    transactionfee,
+  }
+
+  await onSave(updated)        // ✅ callback sẽ cập nhật Supabase + fetch lại list
+  setSaving(false)
+}
+  
   return (
     <form onSubmit={handleSubmit} className="space-y-4 bg-zinc-800 p-4 rounded-xl">
       <h2 className="text-lg text-white font-bold">✏️ Chỉnh sửa giao dịch</h2>

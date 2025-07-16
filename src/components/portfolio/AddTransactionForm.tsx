@@ -1,7 +1,7 @@
 'use client'
 
-import { useState } from 'react'
-import { createClient } from '@supabase/supabase-js'
+import { useState, useEffect } from 'react'
+import { createBrowserClient } from '@supabase/ssr'
 import {
   formatNumber,
   parseNumber,
@@ -14,7 +14,7 @@ import {
   toUpperCaseTrim,
 } from '@/lib/utils'
 
-const supabase = createClient(
+const supabase = createBrowserClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
   process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
 )
@@ -58,40 +58,70 @@ const emptyForm = {
   tags: '',
   source: '',
   highconviction: false,
-  feePreset: 'TCBS', // Mặc định theo TCBS
+  feePreset: 'TCBS',
 }
 
 export default function AddTransactionForm({ onSaved }: { onSaved?: () => void }) {
   const [form, setForm] = useState(emptyForm)
   const [saving, setSaving] = useState(false)
+  const [userId, setUserId] = useState<string | null>(null)
 
-  const quantity = parseNumber(form.quantity)
-  const buyprice = parseNumber(form.buyprice)
-  const currentprice = parseNumber(form.currentprice)
+  // 📥 Lấy user ID từ Supabase
+  useEffect(() => {
+    const fetchUser = async () => {
+      const { data, error } = await supabase.auth.getUser()
+      if (error || !data.user) {
+        console.error('Không lấy được user:', error?.message)
+        return
+      }
+      setUserId(data.user.id)
+    }
+    fetchUser()
+  }, [])
 
-  const feePresetObj = feePresets[form.feePreset]
-  const feeRate = typeof feePresetObj === 'number' ? feePresetObj : feePresetObj?.rate ?? 0.0015
-  const transactionfee = calculateFee(quantity, buyprice, feeRate)
-  const pnl = calculatePnL(buyprice, currentprice, quantity)
-  const pnlPercent = calculatePnLPercentage(buyprice, currentprice)
+const quantity = parseNumber(form.quantity)
+const buyprice = parseNumber(form.buyprice)
+const currentprice = parseNumber(form.currentprice)
 
-  const handleChange = (
-    e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>
-  ) => {
-    const target = e.target as HTMLInputElement
-    const { name, value, type } = target
-    const checked = type === 'checkbox' ? target.checked : undefined
-    setForm((prev) => ({
-      ...prev,
-      [name]: type === 'checkbox' ? checked : value,
-    }))
+// ✅ Fix chuẩn: fallback nếu feePreset bị undefined hoặc không khớp key
+const presetKey = form.feePreset ?? 'default'
+const feePresetObj = feePresets[presetKey] || { rate: 0.0015 } // fallback object
+
+const feeRate =
+  typeof feePresetObj === 'number'
+    ? feePresetObj
+    : feePresetObj?.rate ?? 0.0015
+
+const transactionfee = calculateFee(quantity, buyprice, feeRate)
+const pnl = calculatePnL(buyprice, currentprice, quantity)
+const pnlPercent = calculatePnLPercentage(buyprice, currentprice)
+
+const handleChange = (
+  e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>
+) => {
+  const target = e.target as HTMLInputElement
+  const { name, value, type } = target
+  const checked = type === 'checkbox' ? target.checked : undefined
+
+  setForm((prev) => ({
+    ...prev,
+    [name]: type === 'checkbox' ? checked : value,
+  }))
+}
+
+const handleSubmit = async (e: React.FormEvent) => {
+  e.preventDefault()
+
+  if (!userId) {
+    alert('❌ Chưa xác định được user.')
+    return
   }
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault()
-    setSaving(true)
+  setSaving(true)
 
-    const { error } = await supabase.from('portfolio_transactions').insert({
+  const { data, error } = await supabase
+    .from('portfolio_transactions')
+    .insert({
       assetname: toUpperCaseTrim(form.assetname),
       category: form.category,
       quantity,
@@ -104,20 +134,23 @@ export default function AddTransactionForm({ onSaved }: { onSaved?: () => void }
       source: form.source || null,
       highconviction: form.highconviction,
       transactionfee,
-      issold: false, // Luôn mặc định false trong form thêm mới
+      issold: false,
       sellprice: null,
       sellfee: null,
+      user_id: userId, // 🎯 Gắn đúng user
     })
+    .select()
 
-    setSaving(false)
+  setSaving(false)
 
-    if (error) {
-      alert('❌ Lỗi lưu dữ liệu: ' + error.message)
-    } else {
-      onSaved?.()
-      setForm(emptyForm)
-    }
+  if (error) {
+    alert('❌ Lỗi khi lưu giao dịch: ' + error.message)
+  } else {
+    alert('✅ Đã lưu giao dịch mới!')
+    setForm(emptyForm)
+    onSaved?.() // 💥 Gọi callback để cha fetch lại danh sách
   }
+}
 
   return (
     <form onSubmit={handleSubmit} className="space-y-4">

@@ -191,10 +191,10 @@ export default function HomePage() {
               />
             ) : (
               <TransactionList
-                transactions={transactions}
-                onRefresh={fetchTransactions}
-                setEditingTx={setEditingTx}
-              />
+              transactions={transactions} 
+              onRefresh={fetchTransactions}
+              setEditingTx={setEditingTx}
+            />
             )}
 
             {showForm && (
