@@ -28,13 +28,13 @@ export default function MarketAnalysisPage() {
         supabase
           .from('vnindex_data')
           .select('*')
-          //.eq('user_id', user.id) // Lọc dữ liệu theo user ID
+          .eq('user_id', user.id) // Lọc dữ liệu theo user ID
           .order('date', { ascending: true }),
 
         supabase
           .from('vn30_data')
           .select('*')
-          //.eq('user_id', user.id) // Lọc dữ liệu theo user ID
+          .eq('user_id', user.id) // Lọc dữ liệu theo user ID
           .order('date', { ascending: true }),
       ])
 
