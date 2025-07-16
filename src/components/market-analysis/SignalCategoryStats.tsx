@@ -24,27 +24,31 @@ const CATEGORY_CONFIG = [
 ]
 
 const COLOR_DETAIL_MAP: Record<string, string> = {
-  'Biến động: tăng': '#60a5fa',
-  'Biến động: giảm': '#2563eb',
-  'Biến động: đi ngang': '#1e3a8a',
+  // Biến động
+  'tăng': '#60a5fa',
+  'giảm': '#2563eb',
+  'đi ngang': '#1e3a8a',
 
-  'Khối lượng: cao': '#facc15',
-  'Khối lượng: thấp': '#fde047',
-  'Khối lượng: trung bình': '#ca8a04',
+  // Khối lượng
+  'cao (kl)': '#facc15',
+  'thấp (kl)': '#fde047',
+  'trung bình (kl)': '#ca8a04',
 
-  'Tâm lý: tích cực': '#c084fc',
-  'Tâm lý: tiêu cực': '#9333ea',
-  'Tâm lý: trung lập': '#6b21a8',
+  // Tâm lý
+  'tích cực': '#c084fc',
+  'tiêu cực': '#9333ea',
+  'trung lập': '#6b21a8',
 
-  'Strength: mạnh': '#4ade80',
-  'Strength: yếu': '#22c55e',
-  'Strength: trung bình': '#15803d',
+  // Strength
+  'mạnh': '#4ade80',
+  'yếu': '#22c55e',
+  'trung bình (s)': '#15803d',
 
-  'Tín hiệu: mua': '#fb923c',
-  'Tín hiệu: bán': '#f97316',
-  'Tín hiệu: giữ': '#c2410c',
-
-  'khác': '#64748b'
+  // Tín hiệu
+  'mua': '#fb923c',
+  'bán': '#f97316',
+  'giữ': '#c2410c',
+  'khác': '#64748b',
 }
 
 export default function SignalCategoryStats() {
@@ -162,9 +166,9 @@ export default function SignalCategoryStats() {
               <Bar dataKey="value">
                 {finalData.map((entry, index) => (
                   <Cell
-                  key={`cell-${index}`}
-                  fill={COLOR_DETAIL_MAP[entry.name] || '#8884d8'}
-                />
+                    key={`cell-${index}`}
+                    fill={COLOR_DETAIL_MAP[entry.name] || '#8884d8'}
+                  />
                 ))}
               </Bar>
             </BarChart>
