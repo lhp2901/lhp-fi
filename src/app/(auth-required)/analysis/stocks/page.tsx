@@ -17,6 +17,7 @@ export default function AnalysisPage() {
   const [portfolio, setPortfolio] = useState<PortfolioItem[]>([])
   const [portfolioDate, setPortfolioDate] = useState('')
   const [loadingPortfolio, setLoadingPortfolio] = useState(true)
+  const [aiOutdated, setAiOutdated] = useState(false)
 
   useEffect(() => {
     const init = async () => {
@@ -48,6 +49,12 @@ export default function AnalysisPage() {
         if (res.ok) {
           setPortfolio(json.portfolio)
           setPortfolioDate(json.date)
+
+          // 🔍 Kiểm tra ngày dữ liệu AI
+          const today = new Date()
+          const aiDate = new Date(json.date)
+          const diffDays = Math.floor((+today - +aiDate) / 86400000)
+          if (diffDays > 3) setAiOutdated(true)
         } else {
           console.warn('⚠️ Lỗi response từ API portfolio:', json)
         }
@@ -66,9 +73,15 @@ export default function AnalysisPage() {
       <div className="flex justify-between items-center mb-6">
         <h1 className="text-2xl font-bold">📈 Phân tích cổ phiếu AI</h1>
         {portfolioDate && (
-          <span className="text-sm text-gray-300">Dữ liệu AI ngày: {portfolioDate}</span>
+          <span className="text-sm text-gray-300">Dữ liệu AI ngày: {new Date(portfolioDate).toLocaleDateString('vi-VN')}</span>
         )}
       </div>
+
+      {aiOutdated && (
+        <div className="bg-red-500 text-white text-center px-4 py-2 rounded shadow animate-pulse font-bold">
+          📣 Cảnh báo: Dữ liệu AI đã quá 3 ngày. Có thể cần cập nhật lại!
+        </div>
+      )}
 
       <div className="flex items-center space-x-4 mb-4">
         <label className="text-sm font-medium">Chọn cổ phiếu:</label>

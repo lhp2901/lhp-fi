@@ -62,27 +62,31 @@ function enrichWithSignals(data: any[], indicators: any, userId: string) {
   const offset = data.length - ma20.length
   const enriched = []
 
-  for (let i = offset; i < data.length - 3; i++) {
-    const curr = data[i]
-    const future = data[i + 3]
-    const gain = (future?.close && curr?.close) ? (future.close - curr.close) / curr.close : null
+  for (let i = offset; i < data.length; i++) {
+  const curr = data[i]
+  const future = data[i + 3] ?? null
 
-    enriched.push({
-      user_id: userId,
-      symbol: curr.symbol,
-      date: curr.date,
-      close: fixNull(curr.close),
-      volume: fixNull(curr.volume),
-      ma20: ma20[i - offset],
-      rsi: rsi[i - offset],
-      bb_upper: bb[i - offset]?.upper ?? 0,
-      bb_lower: bb[i - offset]?.lower ?? 0,
-      foreign_buy_value: fixNull(curr.foreign_buy_value),
-      foreign_sell_value: fixNull(curr.foreign_sell_value),
-      future_gain_3d: gain,
-      label_win: typeof gain === 'number' ? gain > 0.03 : null
-    })
-  }
+  const gain =
+    future?.close && curr?.close
+      ? (future.close - curr.close) / curr.close
+      : null
+
+  enriched.push({
+    user_id: userId,
+    symbol: curr.symbol,
+    date: curr.date,
+    close: fixNull(curr.close),
+    volume: fixNull(curr.volume),
+    ma20: ma20[i - offset],
+    rsi: rsi[i - offset],
+    bb_upper: bb[i - offset]?.upper ?? 0,
+    bb_lower: bb[i - offset]?.lower ?? 0,
+    foreign_buy_value: fixNull(curr.foreign_buy_value),
+    foreign_sell_value: fixNull(curr.foreign_sell_value),
+    future_gain_3d: gain,
+    label_win: typeof gain === 'number' ? gain > 0.03 : null, // vẫn là null nếu không có future
+  })
+}
 
   return enriched
 }

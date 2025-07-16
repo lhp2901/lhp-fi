@@ -14,37 +14,46 @@ import {
   Pie,
   Cell,
 } from 'recharts'
-import { cn } from '@/lib/utils'
 
-type CategoryField =
-  | 'volatility_tag'
-  | 'volume_behavior'
-  | 'market_sentiment'
-  | 'trend_strength'
-  | 'signal_type'
-
-const CATEGORY_CONFIG: { field: CategoryField; label: string; icon: string }[] = [
-  { field: 'volatility_tag', label: 'Biến động', icon: '🌪️' },
-  { field: 'volume_behavior', label: 'Khối lượng', icon: '💸' },
-  { field: 'market_sentiment', label: 'Tâm lý', icon: '🧠' },
-  { field: 'trend_strength', label: 'Strength', icon: '📈' },
-  { field: 'signal_type', label: 'Tín hiệu', icon: '📊' },
+const CATEGORY_CONFIG = [
+  { field: 'volatility_tag', label: 'Biến động', icon: '🌪️', color: '#60a5fa' },
+  { field: 'volume_behavior', label: 'Khối lượng', icon: '💸', color: '#facc15' },
+  { field: 'market_sentiment', label: 'Tâm lý', icon: '🧠', color: '#c084fc' },
+  { field: 'trend_strength', label: 'Strength', icon: '📈', color: '#4ade80' },
+  { field: 'signal_type', label: 'Tín hiệu', icon: '📊', color: '#fb923c' },
 ]
 
-const COLORS = ['#38bdf8', '#f97316', '#facc15', '#4ade80', '#c084fc', '#a78bfa', '#f472b6', '#e879f9']
+const COLOR_DETAIL_MAP: Record<string, string> = {
+  'Biến động: tăng': '#60a5fa',
+  'Biến động: giảm': '#2563eb',
+  'Biến động: đi ngang': '#1e3a8a',
 
-type RawSignal = {
-  index_code: 'VNINDEX' | 'VN30'
-} & {
-  [key in CategoryField]: string | null
+  'Khối lượng: cao': '#facc15',
+  'Khối lượng: thấp': '#fde047',
+  'Khối lượng: trung bình': '#ca8a04',
+
+  'Tâm lý: tích cực': '#c084fc',
+  'Tâm lý: tiêu cực': '#9333ea',
+  'Tâm lý: trung lập': '#6b21a8',
+
+  'Strength: mạnh': '#4ade80',
+  'Strength: yếu': '#22c55e',
+  'Strength: trung bình': '#15803d',
+
+  'Tín hiệu: mua': '#fb923c',
+  'Tín hiệu: bán': '#f97316',
+  'Tín hiệu: giữ': '#c2410c',
+
+  'khác': '#64748b'
 }
 
 export default function SignalCategoryStats() {
-  const [rawData, setRawData] = useState<RawSignal[]>([])
+  const [rawData, setRawData] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
   const [indexFilter, setIndexFilter] = useState<'ALL' | 'VNINDEX' | 'VN30'>('ALL')
   const [days, setDays] = useState(30)
   const [chartType, setChartType] = useState<'bar' | 'pie'>('bar')
+  const [activeGroup, setActiveGroup] = useState<string | null>(null)
 
   useEffect(() => {
     const fetchData = async () => {
@@ -58,7 +67,7 @@ export default function SignalCategoryStats() {
         console.error('❌ Lỗi khi lấy dữ liệu:', error)
         setRawData([])
       } else {
-        setRawData(data as RawSignal[])
+        setRawData(data)
       }
       setLoading(false)
     }
@@ -72,16 +81,18 @@ export default function SignalCategoryStats() {
     indexFilter === 'ALL' ? true : d.index_code === indexFilter
   )
 
-  const grouped: Record<string, { name: string; category: string; value: number }> = {}
+  const grouped: Record<string, { name: string; category: string; label: string; value: number }> = {}
 
   for (const row of filtered) {
     for (const { field, label } of CATEGORY_CONFIG) {
       const raw = row[field]?.toLowerCase().trim() || 'khác'
+      if (activeGroup && label !== activeGroup) continue
       const key = `${label}: ${raw}`
       if (!grouped[key]) {
         grouped[key] = {
-          name: key,
+          name: raw,
           category: label,
+          label: `${label}: ${raw}`,
           value: 0,
         }
       }
@@ -125,19 +136,35 @@ export default function SignalCategoryStats() {
         </div>
       </div>
 
+      <div className="flex gap-4 flex-wrap">
+        {CATEGORY_CONFIG.map((cat) => (
+          <button
+            key={cat.label}
+            onClick={() => setActiveGroup(activeGroup === cat.label ? null : cat.label)}
+            className={`text-sm px-2 py-1 rounded text-white ${activeGroup === cat.label ? 'ring-2 ring-white bg-opacity-80' : ''}`}
+            style={{ backgroundColor: cat.color }}
+          >
+            {cat.icon} {cat.label}
+          </button>
+        ))}
+      </div>
+
       <div className="h-[400px] bg-white/10 border border-white/20 rounded-xl p-4">
         <ResponsiveContainer width="100%" height="100%">
           {chartType === 'bar' ? (
-            <BarChart data={finalData}>
-              <XAxis dataKey="name" stroke="#cbd5e1" angle={-30} textAnchor="end" interval={0} />
-              <YAxis stroke="#cbd5e1" />
+            <BarChart data={finalData} layout="vertical">
+              <XAxis type="number" stroke="#cbd5e1" />
+              <YAxis type="category" dataKey="label" stroke="#cbd5e1" width={200} />
               <Tooltip
                 contentStyle={{ backgroundColor: '#1e293b', borderColor: '#475569', color: '#fff' }}
               />
               <Legend wrapperStyle={{ color: '#cbd5e1' }} />
               <Bar dataKey="value">
-                {finalData.map((_, index) => (
-                  <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                {finalData.map((entry, index) => (
+                  <Cell
+                  key={`cell-${index}`}
+                  fill={COLOR_DETAIL_MAP[entry.name] || '#8884d8'}
+                />
                 ))}
               </Bar>
             </BarChart>
@@ -150,11 +177,14 @@ export default function SignalCategoryStats() {
                 outerRadius={130}
                 fill="#8884d8"
                 dataKey="value"
-                nameKey="name"
+                nameKey="label"
                 label
               >
-                {finalData.map((_, index) => (
-                  <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                {finalData.map((entry, index) => (
+                  <Cell
+                    key={`cell-${index}`}
+                    fill={COLOR_DETAIL_MAP[entry.name] || '#8884d8'}
+                  />
                 ))}
               </Pie>
               <Tooltip
