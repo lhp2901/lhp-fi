@@ -109,7 +109,7 @@ export default function SignalCategoryStats() {
   return (
     <div className="space-y-4">
       <div className="flex flex-col md:flex-row justify-between md:items-center gap-3">
-        <h2 className="text-xl font-bold text-white">📊 Tổng hợp chỉ báo phân loại</h2>
+
         <div className="flex gap-2 flex-wrap">
           <select
             value={indexFilter}
