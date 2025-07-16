@@ -1,16 +1,54 @@
 'use client'
 
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
+import { useRouter } from 'next/navigation'
+import { supabase } from '@/lib/supabase'
 import ImportVN30 from './ImportVN30'
 import ImportVNINDEX from './ImportVNINDEX'
 import ImportStocks from './ImportStocks'
 
 export default function SettingsPage() {
+  const router = useRouter()
+
+  const [checking, setChecking] = useState(true)
+  const [allowed, setAllowed] = useState(false)
+
   const [activeTab, setActiveTab] = useState<'vn30' | 'vnindex' | 'stocks'>('vn30')
   const [generating, setGenerating] = useState(false)
   const [aiStep, setAiStep] = useState<'idle' | 'signals' | 'train' | 'predict' | 'done' | 'error'>('idle')
   const [aiMessage, setAiMessage] = useState('')
 
+  useEffect(() => {
+    const checkPermission = async () => {
+      const { data: { session } } = await supabase.auth.getSession()
+
+      if (!session?.user) {
+        router.replace('/login')
+        return
+      }
+
+      const { data: user, error } = await supabase
+        .from('users')
+        .select('is_active')
+        .eq('id', session.user.id)
+        .single()
+
+      if (error || !user?.is_active) {
+        router.replace('/403')
+        return
+      }
+
+      setAllowed(true)
+      setChecking(false)
+    }
+
+    checkPermission()
+  }, [router])
+
+  if (checking) return <div className="p-6">🔍 Đang xác minh quyền truy cập...</div>
+  if (!allowed) return null
+
+  // --- Các hàm AI pipeline giữ nguyên ---
   const handleGenerateSignals = async () => {
     setGenerating(true)
     setAiStep('signals')
@@ -57,29 +95,28 @@ export default function SettingsPage() {
     }
   }
 
+  // 👇 phần hiển thị giữ nguyên
   return (
     <div className="p-6 max-w-4xl mx-auto">
       <h1 className="text-2xl font-bold mb-4">⚙️ Cài đặt hệ thống</h1>
 
+      {/* Tabs nhập dữ liệu */}
       <div className="flex space-x-4 mb-6">
-        {[
-          { id: 'vnindex', label: 'VNINDEX' },
-          { id: 'vn30', label: 'VN30' },
-          { id: 'stocks', label: 'CỔ PHIẾU' },
-        ].map((tab) => (
+        {['vnindex', 'vn30', 'stocks'].map((tab) => (
           <button
-            key={tab.id}
-            onClick={() => setActiveTab(tab.id as any)}
+            key={tab}
+            onClick={() => setActiveTab(tab as any)}
             className={`px-4 py-2 rounded font-medium transition ${
-              activeTab === tab.id
+              activeTab === tab
                 ? 'bg-indigo-600 text-white'
                 : 'bg-slate-200 text-gray-800 hover:bg-slate-300'
             }`}
           >
-            {tab.label}
+            {tab === 'vn30' ? 'VN30' : tab === 'vnindex' ? 'VNINDEX' : 'CỔ PHIẾU'}
           </button>
         ))}
       </div>
+
       {activeTab === 'vnindex' && <ImportVNINDEX />}
       {activeTab === 'vn30' && <ImportVN30 />}
       {activeTab === 'stocks' && <ImportStocks />}

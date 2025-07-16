@@ -9,17 +9,32 @@ import AvatarUploader from '@/components/AvatarUploader'
 export default function Sidebar() {
   const [open, setOpen] = useState(true)
   const [session, setSession] = useState<Session | null>(null)
+  const [isActive, setIsActive] = useState(false)
   const [showAnalysisMenu, setShowAnalysisMenu] = useState(false)
 
   const router = useRouter()
   const pathname = usePathname()
 
   useEffect(() => {
-    const getSession = async () => {
+    const getSessionAndProfile = async () => {
       const { data } = await supabase.auth.getSession()
-      setSession(data.session)
+      const currentSession = data.session
+      setSession(currentSession)
+
+      if (currentSession?.user) {
+        const { data: profile } = await supabase
+          .from('users')
+          .select('is_active')
+          .eq('id', currentSession.user.id)
+          .single()
+
+        if (profile?.is_active === true) {
+          setIsActive(true)
+        }
+      }
     }
-    getSession()
+
+    getSessionAndProfile()
 
     const { data: listener } = supabase.auth.onAuthStateChange((_event, newSession) => {
       setSession(newSession)
@@ -36,7 +51,7 @@ export default function Sidebar() {
     router.refresh()
   }
 
-  const isActive = (path: string) => pathname === path
+  const isActiveRoute = (path: string) => pathname === path
 
   if (!session) return null
 
@@ -53,7 +68,7 @@ export default function Sidebar() {
           <button
             onClick={() => router.push('/')}
             className={`w-full text-left px-3 py-2 rounded-md text-sm font-medium transition ${
-              isActive('/') ? 'bg-indigo-600 text-white' : 'text-slate-200 hover:bg-white/10'
+              isActiveRoute('/') ? 'bg-indigo-600 text-white' : 'text-slate-200 hover:bg-white/10'
             }`}
           >
             {open ? '📊 Dashboard' : '📊'}
@@ -74,7 +89,7 @@ export default function Sidebar() {
                 <button
                   onClick={() => router.push('/analysis/stocks')}
                   className={`block w-full text-left px-3 py-1 rounded-md text-sm ${
-                    isActive('/analysis/stocks') ? 'bg-indigo-500 text-white' : 'text-slate-300 hover:bg-white/10'
+                    isActiveRoute('/analysis/stocks') ? 'bg-indigo-500 text-white' : 'text-slate-300 hover:bg-white/10'
                   }`}
                 >
                   • Cổ phiếu
@@ -82,7 +97,7 @@ export default function Sidebar() {
                 <button
                   onClick={() => router.push('/analysis/market-analysis')}
                   className={`block w-full text-left px-3 py-1 rounded-md text-sm ${
-                    isActive('/analysis/market-analysis') ? 'bg-indigo-500 text-white' : 'text-slate-300 hover:bg-white/10'
+                    isActiveRoute('/analysis/market-analysis') ? 'bg-indigo-500 text-white' : 'text-slate-300 hover:bg-white/10'
                   }`}
                 >
                   • Thị Trường
@@ -94,20 +109,23 @@ export default function Sidebar() {
           <button
             onClick={() => router.push('/portfolio')}
             className={`w-full text-left px-3 py-2 rounded-md text-sm font-medium transition ${
-              isActive('/portfolio') ? 'bg-indigo-600 text-white' : 'text-slate-200 hover:bg-white/10'
+              isActiveRoute('/portfolio') ? 'bg-indigo-600 text-white' : 'text-slate-200 hover:bg-white/10'
             }`}
           >
             {open ? '🎯 Giao dịch' : '🎯'}
           </button>
 
-          <button
-            onClick={() => router.push('/settings')}
-            className={`w-full text-left px-3 py-2 rounded-md text-sm font-medium transition ${
-              isActive('/settings') ? 'bg-indigo-600 text-white' : 'text-slate-200 hover:bg-white/10'
-            }`}
-          >
-            {open ? '⚙️ Cài đặt' : '⚙️'}
-          </button>
+          {/* ✅ Chỉ hiện khi user đã được duyệt */}
+          {isActive && (
+            <button
+              onClick={() => router.push('/settings')}
+              className={`w-full text-left px-3 py-2 rounded-md text-sm font-medium transition ${
+                pathname.startsWith('/settings') ? 'bg-indigo-600 text-white' : 'text-slate-200 hover:bg-white/10'
+              }`}
+            >
+              {open ? '⚙️ Cài đặt' : '⚙️'}
+            </button>
+          )}
         </nav>
       </div>
 
