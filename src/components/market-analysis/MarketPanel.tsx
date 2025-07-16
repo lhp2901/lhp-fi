@@ -90,14 +90,17 @@ export default function MarketPanel({ data, name }: Props) {
       const priceChange = ((item.close - prev.close) / prev.close) * 100
       const isVolumeSpike = item.volume > avgVolume * 1.5
       const isAboveMA20 = item.close > ma20
-      const isBreakout = isAboveMA20 && priceChange > 2 && isVolumeSpike
+      const isBreakout = isAboveMA20 && priceChange > 1.5 && isVolumeSpike
 
       const isForeignBuy = (item.foreign_buy_value ?? 0) > (item.foreign_sell_value ?? 0)
       const isForeignSell = (item.foreign_sell_value ?? 0) > (item.foreign_buy_value ?? 0)
 
       const isAiBuySignal =
-        rsi !== null && rsi < 40 &&
-        priceChange > 1.5 && isForeignBuy
+      item.rsi !== null && item.rsi < 45 &&               // RSI còn thấp, chưa nóng
+      item.priceChange > 0.5 &&                           // Có nhích giá (không rớt nữa)
+      item.isAboveMA20 === true &&                        // Giá đã vượt lên MA20 nhẹ
+      item.foreign_buy_value > item.foreign_sell_value && // Khối ngoại mua ròng
+      item.volume > item.avgVolume * 0.8
 
       const isGomHang =
         rsi !== null && rsi < 50 &&
@@ -118,7 +121,8 @@ export default function MarketPanel({ data, name }: Props) {
         avgVolume, isAboveMA20, isVolumeSpike,
         isAiBuySignal, isGomHang, isDistribution, isBreakout, isBreakdown,
         isBigBuy: isAiBuySignal || isGomHang || isWeakBuy || isBreakout,
-        isBigSell: isDistribution || isWeakSell || isBreakdown
+        isBigSell: isDistribution || isWeakSell || isBreakdown,
+        priceChange
       }
     })
   }, [data])
@@ -168,31 +172,29 @@ export default function MarketPanel({ data, name }: Props) {
           return true
       }
     })
-    return result.slice(-20).reverse()
+    return result.slice(-30).reverse()
   }, [sortedData, filterType])
 
   const enhancedData = useMemo(() => {
-    return signalFiltered.map(item => {
-      const isBuyOpportunity =
-        item.rsi < 50 &&
-        item.isAboveMA20 &&
-        (item.isVolumeSpike || item.isBigBuy || item.isAiBuySignal)
+  return signalFiltered.map(item => {
+    const isBuyOpportunity =
+      item.isBreakout ||
+      (item.rsi < 60 && item.isAboveMA20 && (item.isVolumeSpike || item.isBigBuy))
 
-      const isSellOpportunity =
-        item.rsi > 65 &&
-        !item.isAboveMA20 &&
-        item.priceChange < -0.3
+    const isSellOpportunity =
+      item.rsi > 70 && !item.isAboveMA20 &&
+      item.priceChange < -0.5 && (item.isBigSell || item.isBreakdown)
 
-      let suggestion = '🔵 Quan sát'
-      if (isBuyOpportunity) suggestion = '🟢 MUA'
-      else if (isSellOpportunity) suggestion = '🔴 BÁN'
+    let suggestion = '🔵 Quan sát'
+    if (isBuyOpportunity) suggestion = '🟢 MUA'
+    else if (isSellOpportunity) suggestion = '🔴 BÁN'
 
-      return {
-        ...item,
-        suggestion,
-      }
-    })
-  }, [signalFiltered])
+    return {
+      ...item,
+      suggestion,
+    }
+  })
+}, [signalFiltered])
 
   const handleSort = (key: string) => {
     setSortConfig(prev =>
@@ -387,9 +389,13 @@ export default function MarketPanel({ data, name }: Props) {
                       {item.isDistribution && <div>🔴 Phân Phối</div>}
                       {item.isBreakdown && <div>📉 Cảnh Báo Giảm</div>}
                     </td>
-                    <td className="border px-3 py-1 font-bold text-sm text-center">
-                      {item.suggestion}
-                    </td>
+                    <td className={`border px-3 py-1 font-bold text-sm text-center ${
+                    item.suggestion.includes('MUA') ? 'text-green-400'
+                    : item.suggestion.includes('BÁN') ? 'text-red-400'
+                    : 'text-blue-300'
+                  }`}>
+                    {item.suggestion}
+                  </td>
                   </tr>
                 )
               })}
