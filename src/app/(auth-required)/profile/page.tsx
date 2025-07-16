@@ -4,6 +4,8 @@ import { useState, useEffect } from 'react'
 import Image from 'next/image'
 import { supabase } from '@/lib/supabase'
 import { useRouter } from 'next/navigation'
+0
+-8
 
 const DEFAULT_AVATAR = 'https://ui-avatars.com/api/?name=User'
 

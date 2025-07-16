@@ -32,7 +32,7 @@ export default function AnalysisPage() {
       const { data, error: symbolErr } = await supabase
         .from('stock_entries')
         .select('symbol')
-        .eq('user_id', user.id)
+       // .eq('user_id', user.id)
         .neq('symbol', null)
 
       if (symbolErr) {
