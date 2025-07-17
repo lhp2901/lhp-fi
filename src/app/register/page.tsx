@@ -27,7 +27,7 @@ export default function RegisterPage() {
       {/* RIGHT REGISTER PANEL */}
       <div className="w-full md:w-1/2 flex items-center justify-center p-8">
          <div className="w-full max-w-md bg-gradient-to-br from-[#1e293b] to-[#334155] p-8 rounded-2xl shadow-xl border border-white/10">
-          <h1 className="text-3xl font-bold text-center mb-6 text-white">LHP-Fi</h1>
+        
           <AuthForm title="" buttonLabel="Đăng ký" isRegister />
          
         </div>
