@@ -159,9 +159,14 @@ const handleSubmit = async (e: React.FormEvent) => {
         <input
           name="assetname"
           value={form.assetname}
-          onChange={handleChange}
+          onChange={(e) =>
+            setForm((prev) => ({
+              ...prev,
+              assetname: toUpperCaseTrim(e.target.value),
+            }))
+          }
           placeholder="VD: BTC, VNM"
-          className="w-full rounded-md p-2 bg-zinc-800 text-white"
+          className="w-full rounded-md p-2 bg-zinc-800 text-white uppercase tracking-wider"
         />
       </div>
 
@@ -202,37 +207,49 @@ const handleSubmit = async (e: React.FormEvent) => {
     </div>
 
       <div>
-        <label className="text-sm text-gray-400">🔢 Khối lượng</label>
-        <input
-          name="quantity"
-          value={form.quantity}
-          onChange={handleChange}
-          placeholder="VD: 100"
-          className="w-full rounded-md p-2 bg-zinc-800 text-white"
-        />
-      </div>
+      <label className="text-sm text-gray-400">🔢 Khối lượng</label>
+      <input
+        name="quantity"
+        value={form.quantity}
+        onChange={(e) => {
+          const raw = parseNumber(e.target.value)
+          setForm((prev) => ({ ...prev, quantity: formatNumber(raw) }))
+        }}
+        placeholder="VD: 100"
+        className="w-full rounded-md p-2 bg-zinc-800 text-white"
+        inputMode="numeric"
+      />
+    </div>
 
       <div>
-        <label className="text-sm text-gray-400">💸 Giá mua</label>
-        <input
-          name="buyprice"
-          value={form.buyprice}
-          onChange={handleChange}
-          placeholder="VD: 27.000"
-          className="w-full rounded-md p-2 bg-zinc-800 text-white"
-        />
-      </div>
+      <label className="text-sm text-gray-400">💸 Giá mua</label>
+      <input
+        name="buyprice"
+        value={form.buyprice}
+        onChange={(e) => {
+          const raw = parseNumber(e.target.value)
+          setForm((prev) => ({ ...prev, buyprice: formatNumber(raw) }))
+        }}
+        placeholder="VD: 27.000"
+        inputMode="numeric"
+         className="w-full rounded-md p-2 bg-zinc-800 text-white"
+      />
+    </div>
 
-      <div>
-        <label className="text-sm text-gray-400">💰 Giá hiện tại</label>
-        <input
-          name="currentprice"
-          value={form.currentprice}
-          onChange={handleChange}
-          placeholder="VD: 28.000"
-          className="w-full rounded-md p-2 bg-zinc-800 text-white"
-        />
-      </div>
+     <div>
+      <label className="text-sm text-gray-400">💰 Giá hiện tại</label>
+      <input
+        name="currentprice"
+        value={form.currentprice}
+        onChange={(e) => {
+          const raw = parseNumber(e.target.value)
+          setForm((prev) => ({ ...prev, currentprice: formatNumber(raw) }))
+        }}
+        placeholder="VD: 28.000"
+        inputMode="numeric"
+         className="w-full rounded-md p-2 bg-zinc-800 text-white"
+      />
+    </div>
 
       <div className="text-sm text-gray-400">
         💸 Phí mua: {formatNumber(transactionfee)} đ ({formatPercent(feeRate)})

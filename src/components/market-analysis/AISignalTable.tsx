@@ -21,7 +21,10 @@ interface Signal {
   bollinger_band?: string
   foreign_flow?: number
 }
-
+const formatDate = (d: string) => {
+  const date = new Date(d)
+  return `${date.getDate()}/${date.getMonth() + 1}`
+}
 type TimeRange = 'today' | 'week' | 'month' | 'custom'
 
 export default function AISignalTable() {
@@ -155,19 +158,28 @@ export default function AISignalTable() {
                   <th className="px-4 py-2">📉 MACD</th>
                   <th className="px-4 py-2">📊 Bollinger</th>
                   <th className="px-4 py-2">💰 Dòng tiền NN</th>
-                  <th className="px-4 py-2">📝 Ghi chú</th>
-                </tr>
+                  </tr>
               </thead>
               <tbody className="divide-y divide-white/10">
-                {data.map((row, index) => {
-                  let sentimentColor = 'text-slate-300'
-                  if (row.market_sentiment === 'tham lam') sentimentColor = 'text-green-400'
-                  if (row.market_sentiment === 'sợ hãi') sentimentColor = 'text-red-400'
-                  if (row.market_sentiment === 'trung lập') sentimentColor = 'text-yellow-300'
+                      {data.map((row, index) => {
+                        let sentimentColor = 'text-slate-300'
+                        let rowBg = ''
 
+                        if (row.market_sentiment === 'tham lam') {
+                          sentimentColor = 'text-green-400'
+                          rowBg = 'bg-green-900/10'
+                        }
+                        if (row.market_sentiment === 'sợ hãi') {
+                          sentimentColor = 'text-red-400'
+                          rowBg = 'bg-red-900/10'
+                        }
+                        if (row.market_sentiment === 'trung lập') {
+                          sentimentColor = 'text-yellow-300'
+                          rowBg = 'bg-yellow-900/10'
+                        }                    
                   return (
                     <tr key={index} className="hover:bg-white/5">
-                      <td className="px-4 py-2">{row.date}</td>
+                      <td className="px-4 py-2">{formatDate(row.date)}</td>
                       <td className="px-4 py-2">{row.index_code}</td>
                       <td className="px-4 py-2">{row.signal_type}</td>
                       <td className="px-4 py-2">{(row.confidence_score * 100).toFixed(1)}%</td>
@@ -186,7 +198,6 @@ export default function AISignalTable() {
                       <td className="px-4 py-2">{row.macd_signal || '-'}</td>
                       <td className="px-4 py-2">{row.bollinger_band || '-'}</td>
                       <td className="px-4 py-2">{row.foreign_flow ?? '-'} (tỷ)</td>
-                      <td className="px-4 py-2">{row.notes || '-'}</td>
                     </tr>
                   )
                 })}

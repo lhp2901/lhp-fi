@@ -195,17 +195,23 @@ export default function EditTransactionForm({
 
       <div className="grid grid-cols-2 gap-4">
         <div>
-          <label className="text-sm text-gray-400">Mã tài sản</label>
-          <input
-            name="assetname"
-            value={form.assetname}
-            onChange={handleChange}
-            className="w-full p-2 rounded bg-zinc-700 text-white"
-          />
-        </div>
+        <label className="text-sm text-gray-400">📌 Mã tài sản (viết hoa tự động)</label>
+        <input
+          name="assetname"
+          value={form.assetname}
+          onChange={(e) =>
+            setForm((prev) => ({
+              ...prev,
+              assetname: toUpperCaseTrim(e.target.value),
+            }))
+          }
+          placeholder="VD: BTC, VNM"
+          className="w-full p-2 rounded bg-zinc-700 text-white"
+        />
+      </div>
 
         <div>
-          <label className="text-sm text-gray-400">Danh mục</label>
+          <label className="text-sm text-gray-400">📂 Danh mục</label>
           <select
             name="category"
             value={form.category}
@@ -220,7 +226,7 @@ export default function EditTransactionForm({
         </div>
 
         <div>
-          <label className="text-sm text-gray-400">Khối lượng</label>
+          <label className="text-sm text-gray-400">🔢 Khối lượng</label>
           <input
             name="quantity"
             value={form.quantity}
@@ -230,7 +236,7 @@ export default function EditTransactionForm({
         </div>
 
         <div>
-          <label className="text-sm text-gray-400">Giá mua</label>
+          <label className="text-sm text-gray-400">💸 Giá mua</label>
           <input
             name="buyprice"
             value={form.buyprice}
@@ -240,7 +246,7 @@ export default function EditTransactionForm({
         </div>
 
         <div>
-          <label className="text-sm text-gray-400">Giá hiện tại</label>
+          <label className="text-sm text-gray-400">💰 Giá hiện tại</label>
           <input
             name="currentprice"
             value={form.currentprice}
@@ -287,7 +293,7 @@ export default function EditTransactionForm({
 
       <div className="grid grid-cols-2 gap-4">
         <div>
-          <label className="text-sm text-gray-400">Chiến lược</label>
+          <label className="text-sm text-gray-400">🧠 Chiến lược</label>
           <input
             name="strategy"
             value={form.strategy}
@@ -296,7 +302,7 @@ export default function EditTransactionForm({
           />
         </div>
         <div>
-          <label className="text-sm text-gray-400">Tags</label>
+          <label className="text-sm text-gray-400">🏷️ Tags</label>
           <input
             name="tags"
             value={form.tags}
@@ -305,7 +311,7 @@ export default function EditTransactionForm({
           />
         </div>
         <div>
-          <label className="text-sm text-gray-400">Nguồn</label>
+          <label className="text-sm text-gray-400">📚 Nguồn</label>
           <input
             name="source"
             value={form.source}
@@ -314,7 +320,7 @@ export default function EditTransactionForm({
           />
         </div>
         <div>
-          <label className="text-sm text-gray-400">Ngày mua</label>
+          <label className="text-sm text-gray-400">📅 Ngày mua</label>
           <input
             type="date"
             name="buydate"
@@ -325,7 +331,7 @@ export default function EditTransactionForm({
         </div>
       </div>
 
-      <div className="text-sm text-gray-400">Ghi chú</div>
+      <div className="text-sm text-gray-400">📓 Ghi chú</div>
       <textarea
         name="note"
         value={form.note}
