@@ -6,7 +6,7 @@ import { supabase } from '@/lib/supabase'
 import ImportVN30 from './ImportVN30'
 import ImportVNINDEX from './ImportVNINDEX'
 import ImportStocks from './ImportStocks'
-
+import Link from 'next/link'
 export default function SettingsPage() {
   const router = useRouter()
 
@@ -81,20 +81,7 @@ export default function SettingsPage() {
 
     setGenerating(false)
   }
-
-  const handleResetAI = async () => {
-    setAiStep('idle')
-    setAiMessage('🔄 Đang làm mới dữ liệu AI hôm nay...')
-    try {
-      const res = await fetch('/api/auto-ai-refresh', { method: 'POST' })
-      if (!res.ok) throw new Error('Lỗi khi làm mới AI hôm nay')
-      setAiMessage('✅ Đã xoá & làm mới dữ liệu AI hôm nay!')
-    } catch (err) {
-      console.error('❌ Lỗi refresh:', err)
-      setAiMessage('❌ Lỗi khi cập nhật AI hôm nay.')
-    }
-  }
-
+  
   // 👇 phần hiển thị giữ nguyên
   return (
     <div className="p-6 max-w-4xl mx-auto">
@@ -155,22 +142,8 @@ export default function SettingsPage() {
           🚀 STH AI VNINDEX - VN30
         </button>
       </div>
-
-        <div className="mt-4 space-y-3">
-          <button
-            onClick={handleResetAI}
-            disabled={generating}
-            className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 disabled:opacity-50"
-          >
-            🔄 Làm mới dữ liệu AI
-          </button>
-                  
-          {aiMessage && (
-            <p className="text-sm text-blue-400">{aiMessage}</p>
-          )}
-        </div>
-
-        <div className="mt-6 space-y-2 text-sm">
+          
+         <div className="mt-6 space-y-2 text-sm">
           <div className="flex items-center space-x-2">
             <span className={aiStep === 'signals' || aiStep === 'train' || aiStep === 'predict' || aiStep === 'done' ? 'text-green-400' : aiStep === 'error' ? 'text-red-400' : 'text-gray-400'}>
               {aiStep === 'signals' || aiStep === 'train' || aiStep === 'predict' || aiStep === 'done' ? '✅' : aiStep === 'error' ? '❌' : '⬜'}
@@ -197,8 +170,15 @@ export default function SettingsPage() {
               Gợi ý danh mục đầu tư AI
             </span>
           </div>
+          <div className="bg-red-900/30 border border-red-500 text-red-300 rounded p-3 text-sm mt-4">
+
+          <Link href="/settings/ai-cleanup" className="underline text-blue-300 hover:text-blue-400">
+            🔥 Quản lý xoá dữ liệu AI
+          </Link> để kiểm tra hoặc xoá sạch dữ liệu lỗi.
+        </div>
         </div>
       </div>
     </div>
+    
   )
 }

@@ -1,33 +1,30 @@
 import { NextResponse } from 'next/server'
 import { supabaseAdmin } from '@/lib/supabase-admin'
 
-export async function POST() {
+export async function POST(req: Request) {
+  const body = await req.json()
+  const { tables, userId, note } = body
+
+  if (!userId || !tables || tables.length === 0) {
+    return NextResponse.json({ error: 'Thiếu thông tin xoá dữ liệu' }, { status: 400 })
+  }
+
   try {
-    console.log('🧹 Đang xoá toàn bộ dữ liệu AI...')
-
-    const tables = [
-      'ai_accuracy_logs',
-      'ai_market_signals',
-      'ai_signals',
-      'import_logs',
-    ]
-
     for (const table of tables) {
-      const { error } = await supabaseAdmin
-        .from(table)
-        .delete()
-        .not('id', 'is', null)
-
-      if (error) {
-        throw new Error(`Lỗi xoá bảng ${table}: ${error.message}`)
-      }
-
-      console.log(`✅ Đã xoá bảng ${table}`)
+      const { error } = await supabaseAdmin.from(table).delete().not('id', 'is', null)
+      if (error) throw new Error(`Lỗi xoá bảng ${table}: ${error.message}`)
     }
 
-    return NextResponse.json({ message: '✅ Đã xoá toàn bộ dữ liệu AI!' })
+    const { error: logError } = await supabaseAdmin.from('delete_logs').insert({
+      user_id: userId,
+      tables,
+      note: note || 'Xoá từ giao diện AI cleanup',
+    })
+
+    if (logError) throw new Error(`Lỗi ghi log: ${logError.message}`)
+
+    return NextResponse.json({ message: 'Đã xoá & ghi log thành công' })
   } catch (err: any) {
-    console.error('🔥 Lỗi khi xoá dữ liệu AI:', err.message || err)
-    return NextResponse.json({ error: 'Lỗi khi xoá AI' }, { status: 500 })
+    return NextResponse.json({ error: err.message || 'Lỗi không rõ' }, { status: 500 })
   }
 }
