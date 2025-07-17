@@ -3,6 +3,7 @@
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { supabase } from '@/lib/supabase'
+import RiveCharacter from '@/components/RiveCharacter'
 
 interface Props {
   title: string
@@ -124,6 +125,10 @@ export default function AuthForm({ title, buttonLabel, isRegister }: Props) {
     <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-[#0F172A] to-[#1E293B] text-white">
   <div className="bg-[#1F2937] min-h-[100vh] p-8 shadow-lg w-full max-w-md flex flex-col justify-center">
         <h1 className="text-2xl font-bold mb-6 text-center text-purple-400">{title}</h1>
+        {/* ✅ Rive Animation (client-only) */}
+        <div className="w-80 h-80 mb-4">
+          <RiveCharacter />
+        </div>
 
         <form onSubmit={handleSubmit} className="flex flex-col gap-4">
           {isRegister && (
