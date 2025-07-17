@@ -4,7 +4,7 @@ import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { supabase } from '@/lib/supabase'
 import RiveCharacter from '@/components/RiveCharacter'
-
+import Image from 'next/image'
 interface Props {
   title: string
   buttonLabel: string
@@ -120,82 +120,78 @@ export default function AuthForm({ title, buttonLabel, isRegister }: Props) {
       setLoading(false)
     }
   }
+return (
+  <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-[#0F172A] to-[#1E293B] text-white px-4">
+   <div className="w-full max-w-md bg-black/30 backdrop-blur-md p-8 rounded-2xl shadow-xl border border-white/10">
+      <h1 className="text-2xl font-bold mb-6 text-center text-purple-400">LHP-Fi</h1>
 
-  return (
-    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-[#0F172A] to-[#1E293B] text-white">
-  <div className="bg-[#1F2937] min-h-[100vh] p-8 shadow-lg w-full max-w-md flex flex-col justify-center">
-        <h1 className="text-2xl font-bold mb-6 text-center text-purple-400">LHP-Fi</h1>
-      
-        {/* ✅ Rive Animation (client-only) */}
-        <div className="w-80 h-80 mb-4">
-          <RiveCharacter />
-        </div>
-
-        <form onSubmit={handleSubmit} className="flex flex-col gap-4">
-          {isRegister && (
-            <input
-              type="text"
-              placeholder="Họ và tên"
-              value={fullName}
-              onChange={(e) => setFullName(e.target.value)}
-              className="bg-gray-800 px-4 py-2 rounded-md focus:outline-none focus:ring-2 focus:ring-purple-500"
-              required
-            />
-          )}
-
+      {/* ✅ Rive Animation */}
+      <div className="w-80 h-80 mx-auto mb-4">
+        <RiveCharacter />
+      </div>
+      <form onSubmit={handleSubmit} className="flex flex-col gap-4">
+        {isRegister && (
           <input
-            type="email"
-            placeholder="Email"
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
+            type="text"
+            placeholder="Họ và tên"
+            value={fullName}
+            onChange={(e) => setFullName(e.target.value)}
             className="bg-gray-800 px-4 py-2 rounded-md focus:outline-none focus:ring-2 focus:ring-purple-500"
             required
           />
+        )}
+        <input
+          type="email"
+          placeholder="Email"
+          value={email}
+          onChange={(e) => setEmail(e.target.value)}
+          className="bg-gray-800 px-4 py-2 rounded-md focus:outline-none focus:ring-2 focus:ring-purple-500"
+          required
+        />
+        <input
+          type="password"
+          placeholder="Mật khẩu"
+          value={password}
+          onChange={(e) => setPassword(e.target.value)}
+          className="bg-gray-800 px-4 py-2 rounded-md focus:outline-none focus:ring-2 focus:ring-purple-500"
+          required
+        />
+        <button
+              type="submit"
+              disabled={loading}
+              className="bg-gradient-to-r from-purple-500 to-blue-500 text-white px-4 py-2 text-base font-semibold rounded-md hover:opacity-90 transition-all leading-[1.5rem]"
+            >
+              {loading ? 'Đang xử lý...' : buttonLabel}
+        </button>
+        {error && <p className="text-sm text-red-400 text-center">{error}</p>}
+      </form>
 
-          <input
-            type="password"
-            placeholder="Mật khẩu"
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-            className="bg-gray-800 px-4 py-2 rounded-md focus:outline-none focus:ring-2 focus:ring-purple-500"
-            required
-          />
+      <p className="text-sm text-gray-400 mt-6 text-center">
+        {isRegister ? (
+          <>
+            Đã có tài khoản?{' '}
+            <a href="/login" className="text-teal-300 hover:underline">Đăng nhập</a>
+          </>
+        ) : (
+          <>
+            Chưa có tài khoản?{' '}
+            <a href="/register" className="text-teal-300 hover:underline">Đăng ký</a>
+          </>
+        )}
+      </p>
 
-          <button
-            type="submit"
-            disabled={loading}
-            className="bg-gradient-to-r from-purple-500 to-blue-500 py-2 font-bold rounded-md hover:opacity-90 transition"
-          >
-            {loading ? 'Đang xử lý...' : buttonLabel}
-          </button>
-
-          {error && <p className="text-sm text-red-400 text-center">{error}</p>}
-        </form>
-
-        <p className="text-sm text-gray-400 mt-6 text-center">
-          {isRegister ? (
-            <>
-              Đã có tài khoản?{' '}
-              <a href="/login" className="text-teal-300 hover:underline">Đăng nhập</a>
-            </>
-          ) : (
-            <>
-              Chưa có tài khoản?{' '}
-              <a href="/register" className="text-teal-300 hover:underline">Đăng ký</a>
-            </>
-          )}
-        </p>
-
-        <div className="mt-6 flex flex-col gap-2">
-          <button
-            type="button"
-            onClick={handleGoogleLogin}
-            className="bg-white text-black py-2 rounded-md font-semibold hover:opacity-90 transition"
-          >
-            Đăng nhập bằng Google
-          </button>
-        </div>
+      <div className="mt-6 flex flex-col gap-2">
+      <button
+          type="button"
+          onClick={handleGoogleLogin}
+          className="flex items-center justify-center gap-2 bg-gray-800 text-white py-2 rounded-md font-semibold hover:bg-gray-700 transition"
+        >
+          <Image src="/google-icon.png" alt="Google" width={20} height={20} />
+          Đăng nhập bằng Google
+        </button>
       </div>
     </div>
-  )
+  </div>
+)
+
 }
