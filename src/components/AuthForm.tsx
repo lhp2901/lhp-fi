@@ -108,7 +108,7 @@ export default function AuthForm({ title, buttonLabel, isRegister }: Props) {
       const { error } = await supabase.auth.signInWithOAuth({
         provider: 'google',
         options: {
-          redirectTo: 'http://localhost:3000/auth/callback',
+          redirectTo: 'https://lhp-fi.vercel.app/auth/callback',
         },
       })
 

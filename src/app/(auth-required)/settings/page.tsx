@@ -130,7 +130,7 @@ export default function SettingsPage() {
           disabled={generating}
           className="px-4 py-2 bg-green-600 text-white rounded hover:bg-green-700 disabled:opacity-50"
         >
-          {generating ? '🧠 Đang xử lý...' : '🧠 Sinh tín hiệu AI'}
+          {generating ? '🧠 Đang xử lý...' : '🧠 STH AI Cổ Phiếu'}
         </button>
 
         <button
@@ -152,7 +152,7 @@ export default function SettingsPage() {
           disabled={generating}
           className="px-4 py-2 bg-red-600 text-white rounded hover:bg-red-700 disabled:opacity-50"
         >
-          🚀 Chạy toàn bộ AI Server
+          🚀 STH AI VNINDEX - VN30
         </button>
       </div>
 
