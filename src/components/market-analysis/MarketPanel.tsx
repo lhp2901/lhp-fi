@@ -11,18 +11,14 @@ interface Props {
   data: any[]
   name: string
 }
-
 const formatDate = (d: string) => {
   const date = new Date(d)
   return `${date.getDate()}/${date.getMonth() + 1}`
 }
-
 const formatNumber = (n: number) =>
   n?.toLocaleString('vi-VN', { maximumFractionDigits: 0 }) + ' ₫'
-
 const formatPercent = (n: number) =>
   n?.toFixed(2) + '%'
-
 const CustomTooltip = ({ active, payload, label }: any) => {
   if (active && payload?.length) {
     return (
@@ -44,7 +40,6 @@ const CustomTooltip = ({ active, payload, label }: any) => {
   }
   return null
 }
-
 export default function MarketPanel({ data, name }: Props) {
   const [fromDate, setFromDate] = useState('')
   const [toDate, setToDate] = useState('')
@@ -59,73 +54,90 @@ export default function MarketPanel({ data, name }: Props) {
       setToDate(todayStr)
     }
   }, [name])
+ const enrichData = useMemo(() => {
+  return data.map((item, i) => {
+    const slice = data.slice(Math.max(0, i - 19), i + 1)
+    const closes = slice.map(d => d.close)
+    const volumes = slice.map(d => d.volume)
+    const highs = slice.map(d => d.high)
+    const ma20 = closes.reduce((a, b) => a + b, 0) / closes.length
+    const avgVolume = volumes.reduce((a, b) => a + b, 0) / volumes.length
+    const stdDev = Math.sqrt(closes.map(x => (x - ma20) ** 2).reduce((a, b) => a + b, 0) / closes.length)
+    const upperBB = ma20 + 2 * stdDev
+    const lowerBB = ma20 - 2 * stdDev
+    const high20 = Math.max(...highs)
 
-  const enrichData = useMemo(() => {
-    return data.map((item, i) => {
-      const slice = data.slice(Math.max(0, i - 19), i + 1)
-      const closes = slice.map(d => d.close)
-      const volumes = slice.map(d => d.volume)
-      const ma20 = closes.reduce((a, b) => a + b, 0) / closes.length
-      const avgVolume = volumes.reduce((a, b) => a + b, 0) / volumes.length
-      const stdDev = Math.sqrt(closes.map(x => (x - ma20) ** 2).reduce((a, b) => a + b, 0) / closes.length)
-      const upperBB = ma20 + 2 * stdDev
-      const lowerBB = ma20 - 2 * stdDev
+    const rsi = i >= 14 ? (() => {
+      const gains = data.slice(i - 13, i + 1).map((d, j) => {
+        const diff = j === 0 ? 0 : d.close - data[i - 13 + j - 1].close
+        return diff > 0 ? diff : 0
+      })
+      const losses = data.slice(i - 13, i + 1).map((d, j) => {
+        const diff = j === 0 ? 0 : data[i - 13 + j - 1].close - d.close
+        return diff > 0 ? diff : 0
+      })
+      const avgGain = gains.reduce((a, b) => a + b, 0) / 14
+      const avgLoss = losses.reduce((a, b) => a + b, 0) / 14
+      const rs = avgGain / (avgLoss || 1)
+      return 100 - 100 / (1 + rs)
+    })() : null
+    const prev = data[i - 1] ?? item
+    const priceChange = ((item.close - prev.close) / prev.close) * 100
 
-      const rsi = i >= 14 ? (() => {
-        const gains = data.slice(i - 13, i + 1).map((d, j) => {
-          const diff = j === 0 ? 0 : d.close - data[i - 13 + j - 1].close
-          return diff > 0 ? diff : 0
-        })
-        const losses = data.slice(i - 13, i + 1).map((d, j) => {
-          const diff = j === 0 ? 0 : data[i - 13 + j - 1].close - d.close
-          return diff > 0 ? diff : 0
-        })
-        const avgGain = gains.reduce((a, b) => a + b, 0) / 14
-        const avgLoss = losses.reduce((a, b) => a + b, 0) / 14
-        const rs = avgGain / (avgLoss || 1)
-        return 100 - 100 / (1 + rs)
-      })() : null
+    const isVolumeSpike = item.volume > avgVolume * 1.8 && item.volume > prev.volume * 1.5
+    const isAboveMA20 = item.close > ma20 * 1.01
+    const isBreakHigh20 = item.close > high20 * 1.01
 
-      const prev = data[i - 1] ?? item
-      const priceChange = ((item.close - prev.close) / prev.close) * 100
-      const isVolumeSpike = item.volume > avgVolume * 1.5
-      const isAboveMA20 = item.close > ma20
-      const isBreakout = isAboveMA20 && priceChange > 1.5 && isVolumeSpike
+    const isBreakout =
+      isAboveMA20 &&
+      priceChange > 2 &&
+      isVolumeSpike &&
+      rsi !== null && rsi > 50 && rsi < 70 &&
+      isBreakHigh20
 
-      const isForeignBuy = (item.foreign_buy_value ?? 0) > (item.foreign_sell_value ?? 0)
-      const isForeignSell = (item.foreign_sell_value ?? 0) > (item.foreign_buy_value ?? 0)
+    const isForeignBuy = (item.foreign_buy_value ?? 0) > (item.foreign_sell_value ?? 0) * 1.2
+    const isForeignSell = (item.foreign_sell_value ?? 0) > (item.foreign_buy_value ?? 0) * 1.2
 
-      const isAiBuySignal =
-      item.rsi !== null && item.rsi < 45 &&               // RSI còn thấp, chưa nóng
-      item.priceChange > 0.5 &&                           // Có nhích giá (không rớt nữa)
-      item.isAboveMA20 === true &&                        // Giá đã vượt lên MA20 nhẹ
-      item.foreign_buy_value > item.foreign_sell_value && // Khối ngoại mua ròng
-      item.volume > item.avgVolume * 0.8
+    const isAiBuySignal =
+      rsi !== null && rsi > 40 && rsi < 60 &&
+      priceChange > 0.5 &&
+      item.close > ma20 * 1.005 &&
+      item.volume > avgVolume * 1.2 &&
+      (item.foreign_buy_value ?? 0) > (item.foreign_sell_value ?? 0) * 1.1
 
-      const isGomHang =
-        rsi !== null && rsi < 50 &&
-        isForeignBuy
+    const gomSlice = data.slice(Math.max(0, i - 4), i + 1)
+    const isStrongGomHang =
+      gomSlice.every(d => d.rsi !== null && d.rsi < 50) &&
+      gomSlice.every(d => (d.foreign_buy_value ?? 0) > (d.foreign_sell_value ?? 0)) &&
+      gomSlice.every((d, idx) => {
+        const prev = data[data.indexOf(d) - 1]
+        const diff = prev ? ((d.close - prev.close) / prev.close) * 100 : 0
+        return Math.abs(diff) < 1
+      })
 
-      const isDistribution =
-        rsi !== null && rsi > 70 &&
-        priceChange < 0 &&
-        isVolumeSpike && isForeignSell
+    const isDistribution =
+      rsi !== null && rsi > 70 &&
+      priceChange < 0 &&
+      isVolumeSpike && isForeignSell
 
-      const isWeakBuy = rsi !== null && rsi < 50 && isForeignBuy
-      const isWeakSell = rsi !== null && rsi > 60 && priceChange < 0 && isForeignSell
-      const isBreakdown = rsi !== null && rsi > 65 && !isAboveMA20 && priceChange < -0.5
+    const isWeakBuy = rsi !== null && rsi < 50 && isForeignBuy
+    const isWeakSell = rsi !== null && rsi > 60 && priceChange < 0 && isForeignSell
+    const isBreakdown = rsi !== null && rsi > 65 && !isAboveMA20 && priceChange < -0.5
 
-      return {
-        ...item,
-        ma20, upperBB, lowerBB, rsi,
-        avgVolume, isAboveMA20, isVolumeSpike,
-        isAiBuySignal, isGomHang, isDistribution, isBreakout, isBreakdown,
-        isBigBuy: isAiBuySignal || isGomHang || isWeakBuy || isBreakout,
-        isBigSell: isDistribution || isWeakSell || isBreakdown,
-        priceChange
-      }
-    })
-  }, [data])
+    const isPotentialTrap = isBreakout && rsi > 75
+
+    return {
+      ...item,
+      ma20, upperBB, lowerBB, rsi, avgVolume, high20,
+      isAboveMA20, isVolumeSpike, isBreakHigh20, isBreakout, isAiBuySignal,
+      isStrongGomHang, isGomHang: isStrongGomHang, isDistribution, isBreakdown,
+      isForeignBuy, isForeignSell, isWeakBuy, isWeakSell, isPotentialTrap,
+      isBigBuy: isAiBuySignal || isStrongGomHang || isWeakBuy || isBreakout,
+      isBigSell: isDistribution || isWeakSell || isBreakdown,
+      priceChange,
+    }
+  })
+}, [data])
 
   const filteredData = useMemo(() => {
     return enrichData.filter(item => {
@@ -172,10 +184,10 @@ export default function MarketPanel({ data, name }: Props) {
           return true
       }
     })
-    return result.slice(-30).reverse()
+    return result.slice(-90).reverse()
   }, [sortedData, filterType])
 
-  const enhancedData = useMemo(() => {
+const enhancedData = useMemo(() => {
   return signalFiltered.map(item => {
     const isBuyOpportunity =
       item.isBreakout ||
@@ -186,12 +198,30 @@ export default function MarketPanel({ data, name }: Props) {
       item.priceChange < -0.5 && (item.isBigSell || item.isBreakdown)
 
     let suggestion = '🔵 Quan sát'
-    if (isBuyOpportunity) suggestion = '🟢 MUA'
-    else if (isSellOpportunity) suggestion = '🔴 BÁN'
+    let suggestionLevel = 0
 
+    if (item.isBreakout) {
+      suggestion = '🟢 MUA mạnh – Break xác nhận'
+      suggestionLevel = 2
+    } else if (item.isAiBuySignal) {
+      suggestion = '🟢 MUA nhẹ – tín hiệu AI'
+      suggestionLevel = 1
+    } else if (item.isGomHang) {
+      suggestion = '🟡 Gom hàng – theo dõi'
+      suggestionLevel = 0.5
+    } else if (item.isBreakdown) {
+      suggestion = '🔴 Cảnh báo bán – breakdown'
+      suggestionLevel = -1
+    } else if (item.isDistribution) {
+      suggestion = '🔴 Phân phối mạnh – thoát dần'
+      suggestionLevel = -2
+    }
     return {
       ...item,
       suggestion,
+      suggestionLevel,
+      isBuyOpportunity,
+      isSellOpportunity,
     }
   })
 }, [signalFiltered])
@@ -225,6 +255,7 @@ export default function MarketPanel({ data, name }: Props) {
   const first = sortedData[0]
   const priceChange = last && first ? ((last.close - first.close) / first.close * 100).toFixed(2) : '0'
   const trend = parseFloat(priceChange) > 0 ? '📈 Tăng' : '📉 Giảm'
+
     return (
     <div className="space-y-6 text-white">
       {/* Filter ngày + xoá lọc */}
@@ -281,7 +312,6 @@ export default function MarketPanel({ data, name }: Props) {
       </LineChart>
     </ResponsiveContainer>
   </div>
-
   {/* BarChart Dòng tiền khối ngoại */}
   <div>
     <h3 className="font-medium mb-2">💸 Dòng tiền khối ngoại</h3>
@@ -298,8 +328,6 @@ export default function MarketPanel({ data, name }: Props) {
     </ResponsiveContainer>
   </div>
 </div>
-
-
       {/* LineChart RSI */}
       <div>
         <h3 className="font-medium mb-2">📊 RSI</h3>
@@ -333,73 +361,85 @@ export default function MarketPanel({ data, name }: Props) {
 
         <div className="overflow-x-auto">
           <table className="min-w-full border text-sm text-left text-white bg-gray-900 rounded shadow">
-            <thead className="bg-gray-800 text-gray-300">
+            <thead className="bg-gray-900 text-purple-300 text-xs uppercase tracking-wide">
               <tr>
-                <SortableHeader label="Ngày" keyName="date" />
-                <SortableHeader label="Close" keyName="close" />
-                <SortableHeader label="RSI" keyName="rsi" />
-                <SortableHeader label="Volume" keyName="volume" />
-                <SortableHeader label="MA20" keyName="ma20" />
-                <SortableHeader label="Trên MA20" keyName="isAboveMA20" />
-                <SortableHeader label="AI Mua" keyName="isAiBuySignal" />
-                <SortableHeader label="Breakout" keyName="isBreakout" />
-                <SortableHeader label="Breakdown" keyName="isBreakdown" />
-                <SortableHeader label="BigBuy" keyName="isBigBuy" />
-                <SortableHeader label="BigSell" keyName="isBigSell" />
-                <th className="border px-3 py-2">Mua/Bán (Ngoại)</th>
-                <th className="border px-3 py-2">Tín hiệu</th>
-                <th className="border px-3 py-2">Gợi ý</th>
+                <SortableHeader label="📅 Ngày" keyName="date" />
+                <SortableHeader label="💰 Close" keyName="close" />
+                <SortableHeader label="📊 RSI" keyName="rsi" />
+                <SortableHeader label="🔉 Volume" keyName="volume" />
+                <SortableHeader label="🧮 MA20" keyName="ma20" />
+                <SortableHeader label="📈 Trên MA20" keyName="isAboveMA20" />
+                <SortableHeader label="🤖 AI Mua" keyName="isAiBuySignal" />
+                <SortableHeader label="⚡ Breakout" keyName="isBreakout" />
+                <SortableHeader label="📉 Breakdown" keyName="isBreakdown" />
+                <SortableHeader label="🟢 BigBuy" keyName="isBigBuy" />
+                <SortableHeader label="🔴 BigSell" keyName="isBigSell" />
+                <th className="border px-3 py-2">🌏 Mua/Bán (Ngoại)</th>
+                <th className="border px-3 py-2">📌 Tín hiệu</th>
+                <th className="border px-3 py-2">💡 Gợi ý</th>
               </tr>
             </thead>
             <tbody>
-              {enhancedData.map((item, index) => {
-                const bgClass = item.isAiBuySignal
-                  ? 'bg-green-800 bg-opacity-30'
-                  : item.isDistribution
-                  ? 'bg-red-800 bg-opacity-30'
-                  : item.isBreakout
-                  ? 'bg-yellow-700 bg-opacity-20'
-                  : item.isBreakdown
-                  ? 'bg-red-700 bg-opacity-10'
-                  : 'bg-gray-800 bg-opacity-10'
-                return (
-                  <tr key={index} className={bgClass}>
-                    <td className="border px-3 py-1">{formatDate(item.date)}</td>
-                    <td className="border px-3 py-1">{item.close?.toFixed(2)}</td>
-                    <td className={`border px-3 py-1 ${item.rsi > 70 ? 'text-red-400 font-bold' : item.rsi < 30 ? 'text-green-400 font-bold' : ''}`}>
-                      {item.rsi?.toFixed(2) || '—'}
-                    </td>
-                    <td className="border px-3 py-1">{item.volume?.toLocaleString('vi-VN')}</td>
-                    <td className="border px-3 py-1">{item.ma20?.toFixed(2) || '—'}</td>
-                    <td className="border px-3 py-1 text-center">{item.isAboveMA20 ? '✅' : '—'}</td>
-                    <td className="border px-3 py-1 text-center">{item.isAiBuySignal ? '🧠' : '—'}</td>
-                    <td className="border px-3 py-1 text-center">{item.isBreakout ? '⚡' : '—'}</td>
-                    <td className="border px-3 py-1 text-center">{item.isBreakdown ? '📉' : '—'}</td>
-                    <td className="border px-3 py-1 text-center">{item.isBigBuy ? '🟢' : '—'}</td>
-                    <td className="border px-3 py-1 text-center">{item.isBigSell ? '🔴' : '—'}</td>
-                    <td className="border px-3 py-1">
-                      🟢 {item.foreign_buy_value?.toLocaleString('vi-VN')}<br />
-                      🔴 {item.foreign_sell_value?.toLocaleString('vi-VN')}
-                    </td>
-                    <td className="border px-3 py-1 text-xs font-bold space-y-1">
-                      {item.isAiBuySignal && <div>🧠 AI Vào Hàng</div>}
-                      {item.isGomHang && <div>🟢 Gom Hàng</div>}
-                      {item.isBreakout && <div>⚡ Breakout MA20</div>}
-                      {item.isVolumeSpike && <div>📊 Volume Spike</div>}
-                      {item.isDistribution && <div>🔴 Phân Phối</div>}
-                      {item.isBreakdown && <div>📉 Cảnh Báo Giảm</div>}
-                    </td>
-                    <td className={`border px-3 py-1 font-bold text-sm text-center ${
-                    item.suggestion.includes('MUA') ? 'text-green-400'
-                    : item.suggestion.includes('BÁN') ? 'text-red-400'
-                    : 'text-blue-300'
-                  }`}>
-                    {item.suggestion}
-                  </td>
-                  </tr>
-                )
-              })}
-            </tbody>
+                {enhancedData.map((item, index) => {
+                  const bgClass = item.isAiBuySignal
+                    ? 'bg-green-900 bg-opacity-20'
+                    : item.isDistribution
+                    ? 'bg-red-900 bg-opacity-20'
+                    : item.isBreakout
+                    ? 'bg-yellow-800 bg-opacity-10'
+                    : item.isBreakdown
+                    ? 'bg-red-700 bg-opacity-10'
+                    : 'bg-gray-800 bg-opacity-5'
+
+                  const signalNotes = [
+                    item.isAiBuySignal && '🧠 AI Vào Hàng',
+                    item.isGomHang && '🟢 Gom Hàng Lặng Lẽ',
+                    item.isBreakout && '⚡ Breakout MA20 + Volume',
+                    item.isVolumeSpike && '📊 Volume đột biến',
+                    item.isDistribution && '🔴 Phân Phối đỉnh',
+                    item.isBreakdown && '📉 Gãy MA20 rõ ràng',
+                  ].filter(Boolean)
+
+                  return (
+                    <tr key={index} className={`${bgClass} border-t border-gray-700`}>
+                      <td className="border px-3 py-1">{formatDate(item.date)}</td>
+                      <td className="border px-3 py-1">{item.close?.toFixed(2)}</td>
+                      <td className={`border px-3 py-1 ${
+                        item.rsi > 70 ? 'text-red-400 font-bold' :
+                        item.rsi < 30 ? 'text-green-400 font-bold' : ''
+                      }`}>
+                        {item.rsi?.toFixed(2) || '—'}
+                      </td>
+                      <td className="border px-3 py-1">{item.volume?.toLocaleString('vi-VN')}</td>
+                      <td className="border px-3 py-1">{item.ma20?.toFixed(2) || '—'}</td>
+                      <td className="border px-3 py-1 text-center">{item.isAboveMA20 ? '✅' : '—'}</td>
+                      <td className="border px-3 py-1 text-center">{item.isAiBuySignal ? '🧠' : '—'}</td>
+                      <td className="border px-3 py-1 text-center">{item.isBreakout ? '⚡' : '—'}</td>
+                      <td className="border px-3 py-1 text-center">{item.isBreakdown ? '📉' : '—'}</td>
+                      <td className="border px-3 py-1 text-center">{item.isBigBuy ? '🟢' : '—'}</td>
+                      <td className="border px-3 py-1 text-center">{item.isBigSell ? '🔴' : '—'}</td>
+                      <td className="border px-3 py-1 leading-tight text-xs">
+                        <span className="block">🟢 {item.foreign_buy_value?.toLocaleString('vi-VN')}</span>
+                        <span className="block">🔴 {item.foreign_sell_value?.toLocaleString('vi-VN')}</span>
+                      </td>
+                      <td className="border px-3 py-1 text-xs font-medium leading-tight space-y-1 text-white">
+                        {signalNotes.map((note, i) => (
+                          <div key={i}>{note}</div>
+                        ))}
+                      </td>
+                      <td className={`
+                        px-3 py-1 font-bold text-sm text-center border-l-4 rounded-r
+                        ${item.suggestion?.startsWith('🟢') ? 'border-green-500 text-green-200' :
+                          item.suggestion?.startsWith('🔴') ? 'border-red-500 text-red-200' :
+                          item.suggestion?.startsWith('🟡') ? 'border-yellow-400 text-yellow-200' :
+                          'border-blue-500 text-blue-200'}
+                      `}>
+                        {item.suggestion}
+                      </td>
+                    </tr>
+                  )
+                })}
+              </tbody>
           </table>
         </div>
       </div>

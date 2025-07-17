@@ -18,6 +18,12 @@ const quotes = [
   'Lãi suất kép là kỳ quan thứ tám của thế giới.',
   'Đầu tư vào bản thân là khoản đầu tư sinh lời nhất.',
 ]
+const getQuoteColor = (hour: number): string => {
+  if (hour >= 5 && hour < 12) return 'text-pink-400'        // sáng → màu hồng nổi bật
+  if (hour >= 12 && hour < 17) return 'text-orange-400'     // trưa → màu cam rực
+  if (hour >= 17 && hour < 21) return 'text-indigo-300'     // tối → tím dịu
+  return 'text-lime-300'                                    // khuya → xanh chanh nổi
+}
 
 type TabKey = 'dashboard' | 'market' | 'analysis' | 'portfolio'
 
@@ -31,20 +37,30 @@ export default function HomePage() {
   const [currentTime, setCurrentTime] = useState(new Date())
 
   // ⏱️ Cập nhật thời gian thực
-  useEffect(() => {
-    const timer = setInterval(() => {
-      setCurrentTime(new Date())
-    }, 1000)
-    return () => clearInterval(timer)
-  }, [])
-
-  const getTimeColor = (hour: number) => {
+useEffect(() => {
+  const timer = setInterval(() => {
+    setCurrentTime(new Date())
+  }, 1000)
+  return () => clearInterval(timer)
+}, [])
+const getTimeColor = (hour: number) => {
   if (hour >= 5 && hour < 12) return 'text-yellow-400'     // Sáng sớm
   if (hour >= 12 && hour < 17) return 'text-sky-400'        // Buổi chiều
   if (hour >= 17 && hour < 21) return 'text-emerald-300'    // Buổi tối
   return 'text-rose-400'                                    // Khuya
 }
-
+const getDayText = (day: number): string => {
+  switch (day) {
+    case 0: return 'Sun ☀️ Chill'
+    case 1: return 'Mon 😵‍💫 Uể oải'
+    case 2: return 'Tue 💪 Gồng lệnh'
+    case 3: return 'Wed 🧠 Quan sát'
+    case 4: return 'Thu 🔍 Chờ điểm'
+    case 5: return 'Fri 🥳 Xả hàng'
+    case 6: return 'Sat 🚀 Lên kế hoạch'
+    default: return ''
+  }
+}
   // ✅ Kiểm tra đăng nhập
   useEffect(() => {
     const fetchUser = async () => {
@@ -99,11 +115,12 @@ export default function HomePage() {
   return (
     <div className="space-y-6">
       {/* 🎯 Marquee mới – tách đồng hồ và chữ chạy */}
-      <div className="relative w-full h-10 bg-black rounded-md border border-gray-700 flex items-center px-4">
-        {/* 💬 Quotes chạy bên trái (phần còn lại) */}
-        <div className="absolute left-4 right-[180px] top-0 bottom-0 overflow-hidden flex items-center">
+      <div className="relative w-full h-10 bg-black rounded-md border border-gray-700 flex items-center px-2">
+        
+        {/* 💬 Quotes chạy bên trái */}
+        <div className="absolute left-4 right-[300px] top-0 bottom-0 overflow-hidden flex items-center">
           <div
-            className="whitespace-nowrap text-white font-semibold text-lg animate-marquee"
+            className={`whitespace-nowrap font-semibold text-lg animate-marquee ${getQuoteColor(currentTime.getHours())}`}
             style={{ animationDuration: '20s' }}
           >
             {quotes.map((quote, idx) => (
@@ -114,11 +131,11 @@ export default function HomePage() {
           </div>
         </div>
 
-        {/* ⏰ Đồng hồ cố định bên phải */}
-        <div className={`ml-auto z-10 font-bold text-sm font-mono flex items-center gap-2 ${getTimeColor(currentTime.getHours())}`}>
-        <span>📅 {currentTime.toLocaleDateString('vi-VN')}</span>
-        <span>⏰ {currentTime.toLocaleTimeString('vi-VN')}</span>
-      </div>
+        {/* ⏰ Đồng hồ bên phải */}
+        <div className={`ml-auto z-10 font-bold text-sm font-mono flex items-center gap-2 pr-2 text-right whitespace-nowrap ${getTimeColor(currentTime.getHours())}`}>
+          <span>📅 {getDayText(currentTime.getDay())} – {currentTime.toLocaleDateString('vi-VN')}</span>
+          <span>⏰ {currentTime.toLocaleTimeString('vi-VN')}</span>
+        </div>
       </div>
 
       {/* 🔥 Tabs */}
