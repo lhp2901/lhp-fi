@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react'
 import * as XLSX from 'xlsx'
 import { supabase } from '@/lib/supabase'
+import { formatDate } from '@/lib/utils'
 import type { StockRow, VNIndexRow, VN30Row, ImportLog } from '@/types'
 
 export default function ImportVN30() {
@@ -203,7 +204,7 @@ const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
           <ul className="space-y-1 text-sm">
             {logs.map(log => (
               <li key={log.id} className="border p-2 rounded bg-white/5 text-white">
-                🗓️ {new Date(log.imported_at).toLocaleString()} – {log.total_rows} dòng ({log.updated_rows} cập nhật) – {log.note}
+                🗓️ {formatDate(log.imported_at).toLocaleString()} – {log.total_rows} dòng ({log.updated_rows} cập nhật) – {log.note}
               </li>
             ))}
           </ul>
