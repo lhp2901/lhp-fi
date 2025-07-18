@@ -141,7 +141,12 @@ export default function SettingsPage() {
         >
           🚀 STH AI VNINDEX - VN30
         </button>
-      </div>
+        </div>
+          <div className="mt-4 space-y-3">                      
+          {aiMessage && (
+            <p className="text-sm text-blue-400">{aiMessage}</p>
+          )}
+        </div>
           
          <div className="mt-6 space-y-2 text-sm">
           <div className="flex items-center space-x-2">
