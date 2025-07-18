@@ -9,6 +9,7 @@ import TransactionList from '@/components/portfolio/TransactionList'
 import AddTransactionForm from '@/components/portfolio/AddTransactionForm'
 import EditTransactionForm from '@/components/portfolio/EditTransactionForm'
 import DashboardContent from '@/components/market-analysis/DashboardContent'
+import MarketMoodCard from '@/components/market-analysis/MarketMoodCard'
 
 
 const quotes = [
@@ -29,6 +30,7 @@ type TabKey = 'dashboard' | 'market' | 'analysis' | 'portfolio'
 
 export default function HomePage() {
   const router = useRouter()
+  const [showMood, setShowMood] = useState(false)
   const [loading, setLoading] = useState(true)
   const [activeTab, setActiveTab] = useState<TabKey>('dashboard')
   const [transactions, setTransactions] = useState<any[]>([])
@@ -131,13 +133,30 @@ const getDayText = (day: number): string => {
           </div>
         </div>
 
-        {/* ⏰ Đồng hồ bên phải */}
-        <div className={`ml-auto z-10 font-bold text-sm font-mono flex items-center gap-2 pr-2 text-right whitespace-nowrap ${getTimeColor(currentTime.getHours())}`}>
-          <span>📅 {getDayText(currentTime.getDay())} – {currentTime.toLocaleDateString('vi-VN')}</span>
-          <span>⏰ {currentTime.toLocaleTimeString('vi-VN')}</span>
+        {/* ⏰ Bấm vào để bật MarketMoodCard */}
+        <div className="ml-auto z-10 relative">
+          <button
+            onClick={() => setShowMood(!showMood)}
+            className={`font-bold text-sm font-mono flex items-center gap-2 pr-2 text-right whitespace-nowrap ${getTimeColor(currentTime.getHours())}`}
+          >
+            <span>📅 {getDayText(currentTime.getDay())} – {currentTime.toLocaleDateString('vi-VN')}</span>
+            <span>⏰ {currentTime.toLocaleTimeString('vi-VN')}</span>
+          </button>
+
+          {showMood && (
+            <div className="absolute right-0 mt-2 bg-slate-900 border border-white/10 rounded-lg shadow-lg p-4 z-50 w-[260px]">
+              <MarketMoodCard />
+              <button
+                onClick={() => setShowMood(false)}
+                className="absolute top-1 right-1 text-xs text-red-400 hover:underline"
+              >
+                ✖
+              </button>
+            </div>
+          )}
         </div>
       </div>
-
+            
       {/* 🔥 Tabs */}
       <div className="flex gap-3 flex-wrap mb-4">
         {[

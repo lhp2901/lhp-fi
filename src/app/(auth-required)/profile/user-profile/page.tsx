@@ -69,7 +69,7 @@ export default function UserProfilePage() {
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           <Input label="Họ và tên" name="full_name" value={form.full_name} onChange={handleChange} />
-          <Input label="Nickname" name="nickname" value={form.nickname} onChange={handleChange} />
+          <Input label="Biệt danh" name="nickname" value={form.nickname} onChange={handleChange} />
           <Input label="Ngày sinh" name="birth_date" value={form.birth_date} onChange={handleChange} />
           <Input label="Địa chỉ" name="address" value={form.address} onChange={handleChange} />
           <Input label="Số điện thoại" name="phone_number" value={form.phone_number} onChange={handleChange} />
