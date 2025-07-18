@@ -53,15 +53,16 @@ const getTimeColor = (hour: number) => {
 }
 const getDayText = (day: number): string => {
   switch (day) {
-    case 0: return 'Sun ☀️ Chill'
-    case 1: return 'Mon 😵‍💫 Uể oải'
-    case 2: return 'Tue 💪 Gồng lệnh'
-    case 3: return 'Wed 🧠 Quan sát'
-    case 4: return 'Thu 🔍 Chờ điểm'
-    case 5: return 'Fri 🥳 Xả hàng'
-    case 6: return 'Sat 🚀 Lên kế hoạch'
+    case 0: return 'Sun ☀️ "Nạp năng lượng"'
+    case 1: return 'Mon 💼 "Khởi động chinh chiến"'
+    case 2: return 'Tue ⚔️ "Vào trận không run tay"'
+    case 3: return 'Wed 🧠 "Phân tích chuẩn chỉnh"'
+    case 4: return 'Thu 🔎 "Săn điểm vàng"'
+    case 5: return 'Fri 🚀 "Kết phiên rực rỡ"'
+    case 6: return 'Sat 🧘‍♂️ "Đúc kết – Lên chiến lược"'
     default: return ''
   }
+
 }
   // ✅ Kiểm tra đăng nhập
   useEffect(() => {
@@ -139,7 +140,7 @@ const getDayText = (day: number): string => {
             onClick={() => setShowMood(!showMood)}
             className={`font-bold text-sm font-mono flex items-center gap-2 pr-2 text-right whitespace-nowrap ${getTimeColor(currentTime.getHours())}`}
           >
-            <span>📅 {getDayText(currentTime.getDay())} – {currentTime.toLocaleDateString('vi-VN')}</span>
+            <span>📅 {getDayText(currentTime.getDay())}  –{/*{currentTime.toLocaleDateString('vi-VN')}*/}</span>
             <span>⏰ {currentTime.toLocaleTimeString('vi-VN')}</span>
           </button>
 
