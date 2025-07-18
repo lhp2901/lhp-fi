@@ -9,9 +9,9 @@ import SignalCategoryStats from './SignalCategoryStats'
 export default function DashboardContent() {
   return (
     <div className="space-y-10">
-      <h1 className="text-2xl md:text-3xl font-bold tracking-wide text-teal-300">
+      {/*<h1 className="text-2xl md:text-3xl font-bold tracking-wide text-teal-300">
         📊 AI Market Dashboard
-      </h1>
+      </h1>*/}
 
       {/* 🧩 Tổng hợp phân loại - FULL WIDTH */}
       <div className="bg-white/10 p-4 rounded-xl border border-white/20 shadow space-y-4">

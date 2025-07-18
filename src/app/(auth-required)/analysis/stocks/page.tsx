@@ -70,10 +70,9 @@ export default function AnalysisPage() {
 
   return (
     <div className="min-h-screen w-full px-4 md:px-8 py-6 space-y-6 bg-gradient-to-b from-black to-slate-900 text-white">
-      <div className="flex justify-between items-center mb-6">
-        <h1 className="text-2xl font-bold">📈 Phân tích cổ phiếu AI</h1>
+      <div className="text-right items-center mb-6">        
         {portfolioDate && (
-          <span className="text-sm text-gray-300">Dữ liệu AI ngày: {new Date(portfolioDate).toLocaleDateString('vi-VN')}</span>
+          <span className="text-sm text-gray-300">Dữ liệu ngày: {new Date(portfolioDate).toLocaleDateString('vi-VN')}</span>
         )}
       </div>
 
