@@ -21,7 +21,7 @@ export default function StockAIChart({ symbol }: { symbol: string }) {
   const [showHammer, setShowHammer] = useState(true)
   const [showShark, setShowShark] = useState(true)
   const [showAI, setShowAI] = useState(true)
-
+  
   useEffect(() => {
     if (!chartRef.current) return
 
@@ -299,14 +299,14 @@ export default function StockAIChart({ symbol }: { symbol: string }) {
 
 return (
   <div className="w-full max-w-[1200px] mx-auto rounded-xl border border-slate-700 bg-slate-900 p-4 shadow-xl">
-    <div className="flex gap-4">
+    <div className="flex flex-col lg:flex-row gap-4">
       {/* Chart bên trái */}
-      <div className="flex-1">
-        <div ref={chartRef} className="w-full h-[500px]" />
+       <div className="w-full lg:flex-1">
+          <div ref={chartRef} className="w-full h-[500px]" />
       </div>
 
       {/* Bảng điều khiển bên phải */}
-      <div className="w-[300px] flex flex-col gap-4">
+      <div className="w-[180px] flex flex-col gap-4">
        {/* Ngày */}
       <div className="flex flex-col gap-2 bg-slate-800 p-4 rounded-lg shadow-md border border-slate-600">
         <label className="text-white font-semibold">📅 Từ ngày:</label>
