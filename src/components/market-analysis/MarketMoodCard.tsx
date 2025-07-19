@@ -19,6 +19,7 @@ interface MarketSignal {
   macd_signal: string
   bollinger_band: string
   foreign_flow: number
+  index: string
 }
 
 const sentimentMap: Record<string, { icon: string; label: string; animation: string }> = {
@@ -34,31 +35,103 @@ export default function MarketMoodCardUltra() {
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
-    const fetchData = async () => {
-      const today = format(new Date(), 'yyyy-MM-dd')
+const fetchData = async () => {
+  try {
+    // 1. Lấy ngày mới nhất có trong bảng
+    const { data: latestDateRow, error: dateError } = await supabase
+      .from('ai_market_signals')
+      .select('date')
+      .order('date', { ascending: false })
+      .limit(1)
+      .maybeSingle()
 
-      const { data: todayData } = await supabase
-        .from('ai_market_signals')
-        .select(`*`)
-        .eq('date', today)
-        .order('confidence_score', { ascending: false })
-        .limit(1)
-        .maybeSingle()
-
-      const weekAgo = format(subDays(new Date(), 7), 'yyyy-MM-dd')
-      const { data: historyData } = await supabase
-        .from('ai_market_signals')
-        .select('*')
-        .gte('date', weekAgo)
-        .lte('date', today)
-        .order('date', { ascending: false })
-
-      if (todayData) setSignal(todayData)
-      if (historyData) setHistory(historyData)
-
+    if (dateError || !latestDateRow?.date) {
       setLoading(false)
+      return
     }
 
+    const latestDate = latestDateRow.date
+
+    // 2. Lấy tất cả tín hiệu trong ngày đó (VNINDEX & VN30)
+    const { data: signalsToday, error: signalError } = await supabase
+      .from('ai_market_signals')
+      .select('*')
+      .eq('date', latestDate)
+
+    if (signalError || !signalsToday || signalsToday.length === 0) {
+      setLoading(false)
+      return
+    }
+
+    // 3. Trọng số ưu tiên VNINDEX: toàn thị trường > VN30: nhóm trụ
+    const weights: Record<string, number> = {
+      VNINDEX: 0.7,
+      VN30: 0.3
+    }
+
+    const indexVN = signalsToday.find(s => s.index_code === 'VNINDEX')
+    const index30 = signalsToday.find(s => s.index_code === 'VN30')
+
+    // 4. Fallback thông minh nếu thiếu 1 trong 2 chỉ số
+    const validVN = indexVN || index30
+    const valid30 = index30 || indexVN
+
+    const w1 = weights[validVN.index_code] || 0.5
+    const w2 = weights[valid30.index_code] || 0.5
+
+    // 5. Gộp các chỉ báo kỹ thuật theo trọng số
+    const mergedSignal: MarketSignal = {
+      index: 'merged',
+      date: latestDate,
+      signal_type:
+        validVN.confidence_score > valid30.confidence_score
+          ? validVN.signal_type
+          : valid30.signal_type,
+      market_sentiment:
+        validVN.confidence_score > valid30.confidence_score
+          ? validVN.market_sentiment
+          : valid30.market_sentiment,
+      confidence_score:
+        parseFloat((validVN.confidence_score * w1 + valid30.confidence_score * w2).toFixed(2)),
+      rsi_score:
+        parseFloat((validVN.rsi_score * w1 + valid30.rsi_score * w2).toFixed(2)),
+      volume_spike_ratio:
+        parseFloat((validVN.volume_spike_ratio * w1 + valid30.volume_spike_ratio * w2).toFixed(2)),
+      trend_strength:
+        validVN.trend_strength.length >= valid30.trend_strength.length
+          ? validVN.trend_strength
+          : valid30.trend_strength,
+      momentum:
+        parseFloat((validVN.momentum * w1 + valid30.momentum * w2).toFixed(2)),
+      macd_signal:
+        validVN.macd_signal.length >= valid30.macd_signal.length
+          ? validVN.macd_signal
+          : valid30.macd_signal,
+      bollinger_band:
+        validVN.bollinger_band.length >= valid30.bollinger_band.length
+          ? validVN.bollinger_band
+          : valid30.bollinger_band,
+      foreign_flow:
+        parseFloat((validVN.foreign_flow * w1 + valid30.foreign_flow * w2).toFixed(2))
+    }
+
+    // 6. Lấy lịch sử 7 ngày gần nhất
+    const weekAgo = format(subDays(new Date(latestDate), 7), 'yyyy-MM-dd')
+    const { data: historyData } = await supabase
+      .from('ai_market_signals')
+      .select('*')
+      .gte('date', weekAgo)
+      .lte('date', latestDate)
+      .order('date', { ascending: false })
+
+    setSignal(mergedSignal)
+    if (historyData) setHistory(historyData)
+  } catch (err) {
+    console.error('Lỗi fetchData:', err)
+  } finally {
+    setLoading(false)
+  }
+}
     fetchData()
   }, [])
 
