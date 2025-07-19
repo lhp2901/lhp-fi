@@ -73,9 +73,12 @@ export default function StockAIChart({ symbol }: { symbol: string }) {
     })
 
     const rsiSeries = chart.addLineSeries({
-      color: '#60a5fa',
-      lineWidth: 1,
+      color: '#eef2f7ff',
+      lineWidth: 2,
       priceScaleId: 'rsi-scale',
+      lineStyle: 0,
+      lastValueVisible: false,
+      priceLineVisible: false,
     })
 
     chart.priceScale('rsi-scale').applyOptions({
@@ -135,13 +138,25 @@ export default function StockAIChart({ symbol }: { symbol: string }) {
         close: item.close,
       }))
 
+      const avgVol = averageVolume(mergedData)
       const volumes = mergedData
         .filter((item) => item.volume !== undefined)
-        .map((item) => ({
-          time: formatDate(item.date),
-          value: item.volume,
-          color: item.volume > 2 * averageVolume(mergedData) ? '#f97316' : '#64748b',
-        }))
+        .map((item) => {
+          const vol = item.volume
+          const time = formatDate(item.date)
+
+          let color = '#94a3b8' // slate-400 mặc định
+
+          if (vol > 3 * avgVol) {
+            color = '#0ae368ff' // đỏ mạnh: volume quá cao
+          } else if (vol > 2 * avgVol) {
+            color = '#f97316' // cam: volume tăng đáng kể
+          } else if (vol < 0.5 * avgVol) {
+            color = '#dc2626' // nhạt: volume thấp đáng kể
+          }
+
+          return { time, value: vol, color }
+        })
 
       const ma20 = mergedData
         .filter((item) => item.ma20 !== undefined)
