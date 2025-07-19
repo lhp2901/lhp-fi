@@ -206,9 +206,11 @@ const fetchData = async () => {
             </strong>
             </p>
 
+        <div className="border border-white/30 rounded-xl p-3 bg-white/5 backdrop-blur-sm">
         <p className="text-sm font-medium text-purple-300">
           Cảm xúc thị trường: <span className="font-semibold">{sentimentData.label}</span>
         </p>
+      </div>
           </div>
 
           <div className="mt-4 text-sm space-y-1">
