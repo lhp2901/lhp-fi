@@ -95,7 +95,7 @@ export default function AnalysisPage() {
         </select>
       </div>
 
-      <div className="flex space-x-4 mb-6">
+      <div className="flex flex-wrap gap-2 sm:gap-4 mb-6">
         <Button variant={tab === 'basic' ? 'default' : 'outline'} onClick={() => setTab('basic')}>
           Phân tích cơ bản
         </Button>
