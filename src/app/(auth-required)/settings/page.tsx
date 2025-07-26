@@ -13,7 +13,7 @@ export default function SettingsPage() {
   const [checking, setChecking] = useState(true)
   const [allowed, setAllowed] = useState(false)
 
-  const [activeTab, setActiveTab] = useState<'vn30' | 'vnindex' | 'stocks'>('vn30')
+  const [activeTab, setActiveTab] = useState<'vn30' | 'vnindex' | 'stocks' | 'crypto'>('vn30')
   const [generating, setGenerating] = useState(false)
   const [aiStep, setAiStep] = useState<'idle' | 'signals' | 'train' | 'predict' | 'done' | 'error'>('idle')
   const [aiMessage, setAiMessage] = useState('')
@@ -89,7 +89,7 @@ export default function SettingsPage() {
 
       {/* Tabs nhập dữ liệu */}
       <div className="flex space-x-4 mb-6">
-        {['vnindex', 'vn30', 'stocks'].map((tab) => (
+      {['vnindex', 'vn30', 'stocks', 'crypto'].map((tab) => (
           <button
             key={tab}
             onClick={() => setActiveTab(tab as any)}
@@ -99,7 +99,7 @@ export default function SettingsPage() {
                 : 'bg-slate-200 text-gray-800 hover:bg-slate-300'
             }`}
           >
-            {tab === 'vn30' ? 'VN30' : tab === 'vnindex' ? 'VNINDEX' : 'CỔ PHIẾU'}
+            {tab === 'vn30' ? 'VN30' : tab === 'vnindex' ? 'VNINDEX' : tab === 'crypto' ? 'CRYPTO' :'CỔ PHIẾU'}
           </button>
         ))}
       </div>
@@ -107,6 +107,20 @@ export default function SettingsPage() {
       {activeTab === 'vnindex' && <ImportVNINDEX />}
       {activeTab === 'vn30' && <ImportVN30 />}
       {activeTab === 'stocks' && <ImportStocks />}
+      {activeTab === 'crypto' && (
+      <div className="bg-slate-800 border border-slate-700 p-5 rounded-xl shadow-md">
+        <p className="text-sm text-slate-400 mb-4">
+          Thiết lập danh sách coin để AI theo dõi & phân tích tự động.
+        </p>
+
+        <Link
+          href="/settings/crypto"
+          className="inline-flex items-center gap-2 bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-md text-sm font-medium shadow"
+        >
+          ⚙️ Quản lý danh sách Coin
+        </Link>
+      </div>
+    )}
 
       <div className="mt-10 border-t pt-6">
         <h2 className="text-lg font-semibold mb-3">🤖 Quy trình xử lý tín hiệu AI</h2>

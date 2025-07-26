@@ -10,7 +10,7 @@ import AddTransactionForm from '@/components/portfolio/AddTransactionForm'
 import EditTransactionForm from '@/components/portfolio/EditTransactionForm'
 import DashboardContent from '@/components/market-analysis/DashboardContent'
 import MarketMoodCard from '@/components/market-analysis/MarketMoodCard'
-
+import CryptoDashboardPage from '@/components/crypto/CryptoDashboardPage'
 
 const quotes = [
   'Đừng bao giờ đặt tất cả trứng vào cùng một giỏ.',
@@ -26,7 +26,7 @@ const getQuoteColor = (hour: number): string => {
   return 'text-lime-300'                                    // khuya → xanh chanh nổi
 }
 
-type TabKey = 'dashboard' | 'market' | 'analysis' | 'portfolio'
+type TabKey = 'dashboard' | 'market' | 'analysis' |  'crypto' | 'portfolio'
 
 export default function HomePage() {
   const router = useRouter()
@@ -164,6 +164,7 @@ const getDayText = (day: number): string => {
           { key: 'dashboard', label: '📊 Dashboard' },
           { key: 'market', label: '🌏 Thị Trường' },
           { key: 'analysis', label: '📈 Cổ phiếu' },
+          { key: 'crypto', label: '💎 Crypto' },
           { key: 'portfolio', label: '💼 Giao dịch' },
         ].map((tab) => (
           <button
@@ -196,6 +197,12 @@ const getDayText = (day: number): string => {
       {activeTab === 'analysis' && (
         <section className="mt-4">
           <AnalysisPage />
+        </section>
+      )}
+
+      {activeTab === 'crypto' && (
+        <section className="mt-4">
+          <CryptoDashboardPage />
         </section>
       )}
 
