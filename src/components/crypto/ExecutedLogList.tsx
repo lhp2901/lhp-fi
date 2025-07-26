@@ -11,6 +11,11 @@ type TradingLog = {
   action: 'BUY' | 'SELL'
   price: number
   qty: number
+  tp?: number
+  sl?: number
+  high?: number
+  low?: number
+  current_price?: number
   executed_at: string
   predicted_by: string
   prediction_id: string
@@ -52,32 +57,36 @@ export default function ExecutedLogList() {
   if (error) return <p className="text-red-500">❌ {error}</p>
 
   return (
-    <div className="bg-white dark:bg-slate-900 rounded-2xl p-4 shadow-md mt-8">
-      <table className="min-w-full border border-gray-300 dark:border-slate-700 rounded-xl overflow-hidden">
-        <thead className="bg-gray-100 dark:bg-slate-800">
+    <div className="bg-white dark:bg-slate-900 rounded-2xl p-4 shadow-md mt-8 overflow-x-auto">
+      <table className="min-w-full border border-gray-300 dark:border-slate-700 rounded-xl">
+        <thead className="bg-gray-100 dark:bg-slate-800 text-sm text-gray-700 dark:text-gray-300">
           <tr>
             <th className="p-3 text-left">Coin</th>
             <th className="p-3 text-left">Thời gian</th>
             <th className="p-3 text-left">Lệnh</th>
-            <th className="p-3 text-left">Giá</th>
+            <th className="p-3 text-left">Giá vào</th>
+            <th className="p-3 text-left">TP</th>
+            <th className="p-3 text-left">SL</th>
+            <th className="p-3 text-left">Hiện tại</th>
+            <th className="p-3 text-left">Đỉnh</th>
+            <th className="p-3 text-left">Đáy</th>
             <th className="p-3 text-left">Số lượng</th>
             <th className="p-3 text-left">Model</th>
           </tr>
         </thead>
-        <tbody>
+        <tbody className="text-sm">
           {logs.map((log) => (
-              <tr
-                key={log.id}
-                className="border-t border-gray-200 dark:border-slate-700 hover:bg-gray-50 dark:hover:bg-slate-800 transition"
-              >
-                <td className="p-3 font-mono">{log.symbol}</td>
-                <td className="p-3 text-sm font-mono">
-                  {formatDistanceToNow(new Date(log.executed_at), {
-                    addSuffix: true,
-                    locale: viLocale,
-                  })}
-                </td>
-       
+            <tr
+              key={log.id}
+              className="border-t border-gray-200 dark:border-slate-700 hover:bg-gray-50 dark:hover:bg-slate-800 transition"
+            >
+              <td className="p-3 font-mono">{log.symbol}</td>
+              <td className="p-3 font-mono text-xs text-gray-500">
+                {formatDistanceToNow(new Date(log.executed_at), {
+                  addSuffix: true,
+                  locale: viLocale,
+                })}
+              </td>
               <td
                 className={`p-3 font-bold ${
                   log.action === 'BUY' ? 'text-green-600' : 'text-red-500'
@@ -85,7 +94,16 @@ export default function ExecutedLogList() {
               >
                 {log.action}
               </td>
-              <td className="p-3 font-mono">{log.price}</td>
+              <td className="p-3 font-mono">{log.price?.toFixed(3)}</td>
+              <td className="p-3 font-mono text-green-600">
+                {log.tp?.toFixed(3) ?? '-'}
+              </td>
+              <td className="p-3 font-mono text-red-500">
+                {log.sl?.toFixed(3) ?? '-'}
+              </td>
+              <td className="p-3 font-mono">{log.current_price?.toFixed(3) ?? '-'}</td>
+              <td className="p-3 font-mono">{log.high?.toFixed(3) ?? '-'}</td>
+              <td className="p-3 font-mono">{log.low?.toFixed(3) ?? '-'}</td>
               <td className="p-3 font-mono">{log.qty}</td>
               <td className="p-3 font-mono text-blue-500">{log.predicted_by}</td>
             </tr>
