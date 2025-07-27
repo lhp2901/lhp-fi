@@ -1,4 +1,3 @@
-// /app/api/predict/route.ts (Next.js 13+ App Router)
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
 
