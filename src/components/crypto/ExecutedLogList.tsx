@@ -71,7 +71,6 @@ export default function ExecutedLogList() {
             <th className="p-3 text-left">Đỉnh</th>
             <th className="p-3 text-left">Đáy</th>
             <th className="p-3 text-left">Số lượng</th>
-            <th className="p-3 text-left">Model</th>
           </tr>
         </thead>
         <tbody className="text-sm">
@@ -105,7 +104,6 @@ export default function ExecutedLogList() {
               <td className="p-3 font-mono">{log.high?.toFixed(3) ?? '-'}</td>
               <td className="p-3 font-mono">{log.low?.toFixed(3) ?? '-'}</td>
               <td className="p-3 font-mono">{log.qty}</td>
-              <td className="p-3 font-mono text-blue-500">{log.predicted_by}</td>
             </tr>
           ))}
         </tbody>

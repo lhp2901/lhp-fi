@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from 'react'
 import { supabase } from '@/lib/supabase'
 import { Button } from '@/components/ui/button'
 import { toast } from 'sonner'
+import Link from 'next/link'
 
 type WatchedSymbol = {
   id: number
@@ -258,6 +259,13 @@ export default function CryptoWatchlistPage() {
           </li>
         ))}
       </ul>
+      <div className="bg-red-900/30 border border-red-500 text-red-300 rounded p-3 text-sm mt-4">
+
+          <Link href="/settings/ai-cleanup" className="underline text-blue-300 hover:text-blue-400">
+            🔥 Quản lý xoá dữ liệu AI
+          </Link> để kiểm tra hoặc xoá sạch dữ liệu lỗi.
+        </div>
     </div>
+    
   )
 }

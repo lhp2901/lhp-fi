@@ -107,12 +107,20 @@ export default function PredictionList() {
     : predictions.filter((p) => p.prediction === filter)
 
   return (
-    <div className="w-full max-w-screen-xl mx-auto bg-white dark:bg-slate-900 rounded-2xl p-4 shadow-lg">
+    <div className="bg-white dark:bg-slate-900 rounded-2xl p-4 shadow-md mt-8 overflow-x-auto">
       <div className="flex justify-between items-center mb-4">
         <h2 className="text-xl font-bold">🔮 Tín hiệu AI</h2>
-        <Button onClick={handleRunAI} disabled={running} variant="default">
+        <button
+          onClick={handleRunAI}
+          disabled={running}
+          className={clsx(
+            'px-4 py-2 rounded-xl font-semibold text-white shadow-md transition-all duration-300',
+            'bg-gradient-to-r from-pink-500 to-yellow-500 hover:from-yellow-500 hover:to-pink-500',
+            'disabled:opacity-50 disabled:cursor-not-allowed'
+          )}
+        >
           🚀 {running ? 'Đang chạy...' : 'AI RUN NOW'}
-        </Button>
+        </button>
       </div>
 
       <div className="flex gap-2 mb-4">

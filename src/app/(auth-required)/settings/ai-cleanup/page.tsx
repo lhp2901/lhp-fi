@@ -13,6 +13,10 @@ const TABLES = [
   { key: 'stock_entries', label: '📥 stock_entries' },
   { key: 'vn30_data', label: '📥 vn30_data' },
   { key: 'vnindex_data', label: '📥 vnindex_data' },
+  { key: 'ohlcv_data', label: '📥 ohlcv_data' },
+  { key: 'training_dataset', label: '📥 training_dataset' },
+  { key: 'ai_predictions', label: '📥 ai_predictions' },
+  { key: 'trading_logs', label: '📥 trading_logs' },
 ]
 export default function AiCleanupPage() {
   const [selected, setSelected] = useState<string[]>([])
