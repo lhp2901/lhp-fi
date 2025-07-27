@@ -266,6 +266,5 @@ export default function CryptoWatchlistPage() {
           </Link> để kiểm tra hoặc xoá sạch dữ liệu lỗi.
         </div>
     </div>
-    
   )
 }

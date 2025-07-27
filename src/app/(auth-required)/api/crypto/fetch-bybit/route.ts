@@ -1,13 +1,6 @@
-// 📁 /app/api/your-api-endpoint/route.ts
 import { NextRequest, NextResponse } from 'next/server'
 
-const isDev = process.env.NODE_ENV === 'development'
-
-// 🎯 Tự động chọn server phù hợp theo môi trường
-const AI_SERVER_URL = isDev
-  ? process.env.AI_SERVER_URL // Lấy từ `.env.local` (local)
-  : process.env.AI_SERVER_URL // Lấy từ `.env` (production)
-
+const AI_SERVER_URL = process.env.AI_SERVER_URL || 'http://localhost:10000'
 const FLASK_API_ENDPOINT = `${AI_SERVER_URL}/bybit/bybit_to_supabase`
 
 export async function POST(req: NextRequest) {
@@ -20,6 +13,7 @@ export async function POST(req: NextRequest) {
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({ trigger: 'sync' }),
+      // ❌ KHÔNG dùng signal để tránh timeout!
     })
 
     const contentType = res.headers.get('content-type') || ''
