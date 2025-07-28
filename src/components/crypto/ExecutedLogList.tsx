@@ -58,8 +58,8 @@ export default function ExecutedLogList() {
 
   return (
     <div className="bg-white dark:bg-slate-900 rounded-2xl p-4 shadow-md mt-8 overflow-x-auto">
-      <table className="min-w-full border border-gray-300 dark:border-slate-700 rounded-xl">
-        <thead className="bg-gray-100 dark:bg-slate-800 text-sm text-gray-700 dark:text-gray-300">
+      <table className="min-w-full border border-gray-300 dark:border-slate-700 rounded-lg overflow-hidden bg-white dark:bg-slate-900">
+      <thead className="bg-gray-100 dark:bg-slate-800 text-gray-800 dark:text-gray-200">
           <tr>
             <th className="p-3 text-left">Coin</th>
             <th className="p-3 text-left">Thời gian</th>
@@ -73,7 +73,7 @@ export default function ExecutedLogList() {
             <th className="p-3 text-left">Số lượng</th>
           </tr>
         </thead>
-        <tbody className="text-sm">
+        <tbody className="bg-white dark:bg-slate-900 text-gray-800 dark:text-gray-100">
           {logs.map((log) => (
             <tr
               key={log.id}

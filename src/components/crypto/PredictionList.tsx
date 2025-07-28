@@ -149,8 +149,8 @@ export default function PredictionList() {
       {error && <p className="text-red-600 font-semibold">❌ {error}</p>}
 
       <div className="overflow-x-auto">
-        <table className="min-w-full border border-gray-300 dark:border-slate-700 rounded-lg overflow-hidden">
-          <thead className="bg-gray-100 dark:bg-slate-800">
+        <table className="min-w-full border border-gray-300 dark:border-slate-700 rounded-lg overflow-hidden bg-white dark:bg-slate-900">
+        <thead className="bg-gray-100 dark:bg-slate-800 text-gray-800 dark:text-gray-200">
             <tr>
               <th className="p-3 text-left">Coin</th>
               <th className="p-3 text-left">Thời gian</th>
@@ -158,7 +158,7 @@ export default function PredictionList() {
               <th className="p-3 text-left">Độ tin cậy</th>
             </tr>
           </thead>
-          <tbody>
+          <tbody className="bg-white dark:bg-slate-900 text-gray-800 dark:text-gray-100">
             {filteredPredictions.map((p, index) => (
               <>
                 <motion.tr
