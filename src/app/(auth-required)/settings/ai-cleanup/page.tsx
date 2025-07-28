@@ -5,91 +5,89 @@ import { supabase } from '@/lib/supabase'
 import { formatDate } from '@/lib/utils'
 
 const TABLES = [
-  // 📡 AI DATA TABLES
+  // 📡 'Bảng dữ liệu COIN'
   {
-    key: 'training_dataset',
-    label: '🎯 Dữ liệu huấn luyện AI',
-    tooltip: 'Tập dữ liệu được sử dụng để huấn luyện mô hình AI',
-    group: 'Bảng dữ liệu AI'
-  },
-  {
-    key: 'ai_predictions',
-    label: '🔮 Dự đoán từ AI',
-    tooltip: 'Kết quả dự đoán giá hoặc tín hiệu từ mô hình AI',
-    group: 'Bảng dữ liệu AI'
-  },
-
-  // 📊 SIGNAL & MARKET
-  {
-    key: 'ai_signals',
-    label: '📊 Tín hiệu AI',
-    tooltip: 'Tín hiệu mua/bán do mô hình AI đưa ra',
-    group: 'Bảng tín hiệu & thị trường'
-  },
-  {
-    key: 'ai_market_signals',
-    label: '📈 Tín hiệu thị trường từ AI',
-    tooltip: 'Tín hiệu AI dựa trên phân tích xu hướng thị trường',
-    group: 'Bảng tín hiệu & thị trường'
+    key: 'watched_symbols',
+    label: '👀 Mã đồng coin đang theo dõi',
+    tooltip: 'Danh sách mã đồng coin người dùng đang quan tâm',
+    group: 'Bảng dữ liệu COIN'
   },
   {
     key: 'ohlcv_data',
     label: '🕒 Dữ liệu nến OHLCV',
     tooltip: 'Open, High, Low, Close, Volume – dữ liệu nến để phân tích kỹ thuật',
-    group: 'Bảng tín hiệu & thị trường'
-  },
-
-  // 🧾 LOGS & SYSTEM
-  {
-    key: 'ai_accuracy_logs',
-    label: '📚 Nhật ký độ chính xác AI',
-    tooltip: 'Lưu lại độ chính xác của AI theo từng phiên đánh giá',
-    group: 'Bảng nhật ký & hệ thống'
+    group: 'Bảng dữ liệu COIN'
   },
   {
-    key: 'import_logs',
-    label: '📥 Nhật ký nhập dữ liệu',
-    tooltip: 'Theo dõi quá trình nhập liệu từ các nguồn',
-    group: 'Bảng nhật ký & hệ thống'
+    key: 'training_dataset',
+    label: '🎯 Dữ liệu huấn luyện AI',
+    tooltip: 'Tập dữ liệu được sử dụng để huấn luyện mô hình AI',
+    group: 'Bảng dữ liệu COIN'
   },
+  {
+    key: 'ai_predictions',
+    label: '🔮 Dự đoán từ AI',
+    tooltip: 'Kết quả dự đoán giá hoặc tín hiệu từ mô hình AI',
+    group: 'Bảng dữ liệu COIN'
+  },  
   {
     key: 'trading_logs',
-    label: '🧾 Nhật ký giao dịch',
+    label: '🧾 Nhật ký giao dịch (COIN)',
     tooltip: 'Ghi lại lịch sử các giao dịch AI đã thực hiện',
-    group: 'Bảng nhật ký & hệ thống'
+    group: 'Bảng dữ liệu COIN'
   },
-
-  // 📁 RAW DATA
-  {
-    key: 'portfolio_transactions',
-    label: '💼 Giao dịch danh mục đầu tư',
-    tooltip: 'Lưu thông tin các giao dịch danh mục đầu tư của người dùng',
-    group: 'Bảng dữ liệu gốc'
-  },
+  // 📊 Bảng dữ liệu CỔ PHIẾU
   {
     key: 'stock_entries',
     label: '📄 Danh sách mã cổ phiếu theo dõi',
     tooltip: 'Các mã cổ phiếu được người dùng thêm vào để theo dõi',
-    group: 'Bảng dữ liệu gốc'
+    group: 'Bảng dữ liệu CỔ PHIẾU'
   },
+  {
+    key: 'ai_signals',
+    label: '📊 Tín hiệu AI',
+    tooltip: 'Tín hiệu mua/bán do mô hình AI đưa ra',
+    group: 'Bảng dữ liệu CỔ PHIẾU'
+  }, 
+  
+  // 🧾 Bảng dữ liệu VNINDEX - VN30
   {
     key: 'vn30_data',
     label: '🏦 Dữ liệu VN30',
     tooltip: 'Chứa dữ liệu chỉ số VN30 theo thời gian',
-    group: 'Bảng dữ liệu gốc'
+    group: 'Bảng dữ liệu VNINDEX - VN30'
   },
   {
     key: 'vnindex_data',
     label: '📈 Dữ liệu VNINDEX',
     tooltip: 'Dữ liệu chỉ số VNINDEX từ thị trường',
-    group: 'Bảng dữ liệu gốc'
+    group: 'Bảng dữ liệu VNINDEX - VN30'
   },
   {
-    key: 'watched_symbols',
-    label: '👀 Mã cổ phiếu đang theo dõi',
-    tooltip: 'Danh sách mã cổ phiếu người dùng đang quan tâm',
-    group: 'Bảng dữ liệu gốc'
-  }
+    key: 'ai_accuracy_logs',
+    label: '📚 Nhật ký độ chính xác AI',
+    tooltip: 'Lưu lại độ chính xác của AI theo từng phiên đánh giá',
+    group: 'Bảng dữ liệu VNINDEX - VN30'
+  },    
+  {
+    key: 'ai_market_signals',
+    label: '📈 Tín hiệu thị trường từ AI',
+    tooltip: 'Tín hiệu AI dựa trên phân tích xu hướng thị trường',
+    group: 'Bảng dữ liệu VNINDEX - VN30'
+  },
+  {
+    key: 'import_logs',
+    label: '📥 Nhật ký nhập dữ liệu',
+    tooltip: 'Theo dõi quá trình nhập liệu từ các nguồn',
+    group: 'Bảng dữ liệu VNINDEX - VN30'
+  },
+ // 🧾 Bảng dữ liệu GD ĐẦU TƯ
+  {
+    key: 'portfolio_transactions',
+    label: '💼 Giao dịch đầu tư',
+    tooltip: 'Lưu thông tin các giao dịch danh mục đầu tư của người dùng',
+    group: 'Bảng dữ liệu GD ĐẦU TƯ'
+  }  
 ];
 
 export default function AiCleanupPage() {
@@ -202,26 +200,45 @@ export default function AiCleanupPage() {
   
   return (
     <div className="p-6 max-w-4xl mx-auto">
-       <div className="space-y-3 mb-6">
-    <p className="text-xl font-bold mb-4">🗂️ Quản lý xoá dữ liệu</p>
-    <div className="flex flex-col gap-2">
-      {TABLES.map((t) => (
-        <label key={t.key} className="flex items-center gap-2 text-sm">
-          <input
-            type="checkbox"
-            checked={selected.includes(t.key)}
-            onChange={() => handleSelect(t.key)}
-          />
-          <span>
-            {t.label} <span className="text-blue-500/80 italic">({t.key})</span>
-          </span>
-        </label>
-      ))}
+        <div className="space-y-3 mb-6">
+          <p className="text-xl font-bold mb-4">🗂️ Quản lý xoá dữ liệu</p>
+
+          {/* ✅ Phân nhóm bảng dữ liệu */}
+          {Object.entries(
+            TABLES.reduce((acc, t) => {
+              if (!acc[t.group]) acc[t.group] = [];
+              acc[t.group].push(t);
+              return acc;
+            }, {} as Record<string, typeof TABLES>)
+          ).map(([groupName, tables]) => (
+            <div key={groupName} className="mb-4">
+              <h2 className="text-md font-semibold text-gray-700 dark:text-gray-200 mb-2">{groupName}</h2>
+              <div className="flex flex-col gap-2 pl-4">
+                {tables.map((t) => (
+                  <label key={t.key} className="flex items-center gap-2 text-sm">
+                    <input
+                      type="checkbox"
+                      checked={selected.includes(t.key)}
+                      onChange={() => handleSelect(t.key)}
+                    />
+                    <span>
+                      {t.label}{' '}
+                      <span className="text-blue-500/80 italic">({t.key})</span>
+                    </span>
+                  </label>
+                ))}
+              </div>
+            </div>
+          ))}
+
+          {/* Chọn tất cả */}
+          <label
+            className="text-sm text-blue-600 cursor-pointer hover:underline"
+            onClick={handleSelectAll}
+          >
+            {selectAll ? '🧺 Bỏ chọn tất cả' : '✅ Chọn tất cả'}
+          </label>
         </div>
-        <label className="text-sm text-blue-600 cursor-pointer" onClick={handleSelectAll}>
-          {selectAll ? '🧺 Bỏ chọn tất cả' : '✅ Chọn tất cả'}
-        </label>
-      </div>
 
       <div className="mb-6">
         <button
