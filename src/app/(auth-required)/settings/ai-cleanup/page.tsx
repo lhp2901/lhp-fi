@@ -5,19 +5,93 @@ import { supabase } from '@/lib/supabase'
 import { formatDate } from '@/lib/utils'
 
 const TABLES = [
-  { key: 'ai_signals', label: '📊 ai_signals' },
-  { key: 'ai_market_signals', label: '📈 ai_market_signals' },
-  { key: 'ai_accuracy_logs', label: '📚 ai_accuracy_logs' },
-  { key: 'import_logs', label: '📥 import_logs' },
-  { key: 'portfolio_transactions', label: '📥 portfolio_transactions' },
-  { key: 'stock_entries', label: '📥 stock_entries' },
-  { key: 'vn30_data', label: '📥 vn30_data' },
-  { key: 'vnindex_data', label: '📥 vnindex_data' },
-  { key: 'ohlcv_data', label: '📥 ohlcv_data' },
-  { key: 'training_dataset', label: '📥 training_dataset' },
-  { key: 'ai_predictions', label: '📥 ai_predictions' },
-  { key: 'trading_logs', label: '📥 trading_logs' },
-]
+  // 📡 AI DATA TABLES
+  {
+    key: 'training_dataset',
+    label: '🎯 Dữ liệu huấn luyện AI',
+    tooltip: 'Tập dữ liệu được sử dụng để huấn luyện mô hình AI',
+    group: 'Bảng dữ liệu AI'
+  },
+  {
+    key: 'ai_predictions',
+    label: '🔮 Dự đoán từ AI',
+    tooltip: 'Kết quả dự đoán giá hoặc tín hiệu từ mô hình AI',
+    group: 'Bảng dữ liệu AI'
+  },
+
+  // 📊 SIGNAL & MARKET
+  {
+    key: 'ai_signals',
+    label: '📊 Tín hiệu AI',
+    tooltip: 'Tín hiệu mua/bán do mô hình AI đưa ra',
+    group: 'Bảng tín hiệu & thị trường'
+  },
+  {
+    key: 'ai_market_signals',
+    label: '📈 Tín hiệu thị trường từ AI',
+    tooltip: 'Tín hiệu AI dựa trên phân tích xu hướng thị trường',
+    group: 'Bảng tín hiệu & thị trường'
+  },
+  {
+    key: 'ohlcv_data',
+    label: '🕒 Dữ liệu nến OHLCV',
+    tooltip: 'Open, High, Low, Close, Volume – dữ liệu nến để phân tích kỹ thuật',
+    group: 'Bảng tín hiệu & thị trường'
+  },
+
+  // 🧾 LOGS & SYSTEM
+  {
+    key: 'ai_accuracy_logs',
+    label: '📚 Nhật ký độ chính xác AI',
+    tooltip: 'Lưu lại độ chính xác của AI theo từng phiên đánh giá',
+    group: 'Bảng nhật ký & hệ thống'
+  },
+  {
+    key: 'import_logs',
+    label: '📥 Nhật ký nhập dữ liệu',
+    tooltip: 'Theo dõi quá trình nhập liệu từ các nguồn',
+    group: 'Bảng nhật ký & hệ thống'
+  },
+  {
+    key: 'trading_logs',
+    label: '🧾 Nhật ký giao dịch',
+    tooltip: 'Ghi lại lịch sử các giao dịch AI đã thực hiện',
+    group: 'Bảng nhật ký & hệ thống'
+  },
+
+  // 📁 RAW DATA
+  {
+    key: 'portfolio_transactions',
+    label: '💼 Giao dịch danh mục đầu tư',
+    tooltip: 'Lưu thông tin các giao dịch danh mục đầu tư của người dùng',
+    group: 'Bảng dữ liệu gốc'
+  },
+  {
+    key: 'stock_entries',
+    label: '📄 Danh sách mã cổ phiếu theo dõi',
+    tooltip: 'Các mã cổ phiếu được người dùng thêm vào để theo dõi',
+    group: 'Bảng dữ liệu gốc'
+  },
+  {
+    key: 'vn30_data',
+    label: '🏦 Dữ liệu VN30',
+    tooltip: 'Chứa dữ liệu chỉ số VN30 theo thời gian',
+    group: 'Bảng dữ liệu gốc'
+  },
+  {
+    key: 'vnindex_data',
+    label: '📈 Dữ liệu VNINDEX',
+    tooltip: 'Dữ liệu chỉ số VNINDEX từ thị trường',
+    group: 'Bảng dữ liệu gốc'
+  },
+  {
+    key: 'watched_symbols',
+    label: '👀 Mã cổ phiếu đang theo dõi',
+    tooltip: 'Danh sách mã cổ phiếu người dùng đang quan tâm',
+    group: 'Bảng dữ liệu gốc'
+  }
+];
+
 export default function AiCleanupPage() {
   const [selected, setSelected] = useState<string[]>([])
   const [selectAll, setSelectAll] = useState(false)
@@ -128,23 +202,23 @@ export default function AiCleanupPage() {
   
   return (
     <div className="p-6 max-w-4xl mx-auto">
-      <h1 className="text-xl font-bold mb-4">🧹 Quản lý xoá dữ liệu AI</h1>
-
-      <div className="space-y-3 mb-6">
-        <p className="text-sm font-medium">🗂️ Chọn bảng muốn xoá</p>
-        <div className="flex flex-wrap gap-4">
-          {TABLES.map((t) => (
-            <label key={t.key} className="flex items-center gap-2 text-sm">
-              <input
-                type="checkbox"
-                checked={selected.includes(t.key)}
-                onChange={() => handleSelect(t.key)}
-              />
-              {t.label}
-            </label>
-          ))}
+       <div className="space-y-3 mb-6">
+    <p className="text-xl font-bold mb-4">🗂️ Quản lý xoá dữ liệu</p>
+    <div className="flex flex-col gap-2">
+      {TABLES.map((t) => (
+        <label key={t.key} className="flex items-center gap-2 text-sm">
+          <input
+            type="checkbox"
+            checked={selected.includes(t.key)}
+            onChange={() => handleSelect(t.key)}
+          />
+          <span>
+            {t.label} <span className="text-blue-500/80 italic">({t.key})</span>
+          </span>
+        </label>
+      ))}
         </div>
-        <label className="text-sm text-blue-400 cursor-pointer" onClick={handleSelectAll}>
+        <label className="text-sm text-blue-600 cursor-pointer" onClick={handleSelectAll}>
           {selectAll ? '🧺 Bỏ chọn tất cả' : '✅ Chọn tất cả'}
         </label>
       </div>
@@ -153,7 +227,7 @@ export default function AiCleanupPage() {
         <button
           onClick={handleDelete}
           disabled={deleting || selected.length === 0}
-          className="px-2 py-2 bg-red-600 text-white rounded hover:bg-red-700 disabled:opacity-50"
+          className="px-1 py-1 bg-red-600 text-white rounded hover:bg-red-700 disabled:opacity-50"
         >
           🗑️ Xoá dữ liệu đã chọn
         </button>
@@ -186,7 +260,7 @@ export default function AiCleanupPage() {
   <button
     onClick={handleDeleteLogs}
     disabled={deleting}
-    className="px-2 py-2 bg-yellow-600 text-white rounded hover:bg-yellow-700 disabled:opacity-50"
+    className="px-1 py-1 bg-yellow-600 text-white rounded hover:bg-yellow-700 disabled:opacity-50"
   >
     🧨 Xoá toàn bộ lịch sử xoá
   </button>

@@ -9,12 +9,16 @@ import Link from 'next/link'
 type WatchedSymbol = {
   id: number
   symbol: string
+  interval?: string
+  candle_limit?: number
   created_at: string
 }
 
 export default function CryptoWatchlistPage() {
   const [symbols, setSymbols] = useState<WatchedSymbol[]>([])
   const [newSymbol, setNewSymbol] = useState('')
+  const [interval, setInterval] = useState('5')
+  const [candleLimit, setCandleLimit] = useState(100)
   const [loadingList, setLoadingList] = useState(false)
   const [adding, setAdding] = useState(false)
   const [fetching, setFetching] = useState(false)
@@ -76,6 +80,8 @@ export default function CryptoWatchlistPage() {
       {
         symbol: upperSymbol,
         user_id: userId,
+        interval: interval || '5',
+        candle_limit: candleLimit || 100
       },
     ])
 
@@ -178,15 +184,41 @@ export default function CryptoWatchlistPage() {
 
   return (
     <div className="max-w-2xl mx-auto mt-12 p-8 bg-white dark:bg-slate-900 shadow-xl rounded-2xl border dark:border-slate-700">
-  
-      <div className="flex items-center gap-3 mb-5">
+      <div className="flex flex-col gap-4 mb-6">
         <input
           type="text"
           placeholder="Nhập coin (VD: BTCUSDT)"
           value={newSymbol}
           onChange={(e) => setNewSymbol(e.target.value.toUpperCase())}
-          className="flex-1 px-4 py-3 border border-gray-300 rounded-lg text-black dark:text-white dark:bg-slate-800 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+          className="w-full px-4 py-3 border border-gray-300 rounded-lg text-black dark:text-white dark:bg-slate-800 focus:outline-none"
         />
+
+        <div className="flex gap-4">
+          <select
+            value={interval}
+            onChange={(e) => setInterval(e.target.value)}
+            className="flex-1 px-4 py-3 border border-gray-300 rounded-lg dark:bg-slate-800 dark:text-white"
+          >
+            <option value="1">1 phút</option>
+            <option value="5">5 phút</option>
+            <option value="15">15 phút</option>
+            <option value="30">30 phút</option>
+            <option value="60">1 giờ</option>
+            <option value="120">2 giờ</option>
+            <option value="240">4 giờ</option>
+       
+          </select>
+
+          <input
+            type="number"
+            min={1}
+            value={candleLimit}
+            onChange={(e) => setCandleLimit(Number(e.target.value))}
+            placeholder="Số nến"
+            className="w-24 px-3 py-3 border border-gray-300 rounded-lg dark:bg-slate-800 dark:text-white"
+          />
+        </div>
+
         <Button
           onClick={handleAddSymbol}
           disabled={adding}
@@ -249,22 +281,27 @@ export default function CryptoWatchlistPage() {
             key={item.id}
             className="flex justify-between items-center px-4 py-3 border border-gray-300 dark:border-slate-700 rounded-lg bg-slate-50 dark:bg-slate-800 hover:bg-slate-100 dark:hover:bg-slate-700 transition"
           >
-            <span className="font-semibold text-gray-800 dark:text-white">{item.symbol}</span>
+            <div>
+              <span className="font-semibold text-gray-800 dark:text-white mr-2">{item.symbol}</span>
+              <span className="text-gray-500 dark:text-gray-400 text-sm">
+                ({item.interval || '5'} phút - {item.candle_limit || 100} nến )
+              </span>
+            </div>
             <button
               onClick={() => handleDeleteSymbol(item.id)}
               className="text-red-600 hover:underline text-sm"
             >
-              ❌ Xoá
+              ❌del
             </button>
           </li>
         ))}
       </ul>
-      <div className="bg-red-900/30 border border-red-500 text-red-300 rounded p-3 text-sm mt-4">
 
-          <Link href="/settings/ai-cleanup" className="underline text-blue-300 hover:text-blue-400">
-            🔥 Quản lý xoá dữ liệu AI
-          </Link> để kiểm tra hoặc xoá sạch dữ liệu lỗi.
-        </div>
+      <div className="bg-red-900/30 border border-red-500 text-red-300 rounded p-3 text-sm mt-4">
+        <Link href="/settings/ai-cleanup" className="underline text-blue-300 hover:text-blue-400">
+          🔥 Quản lý xoá dữ liệu AI
+        </Link> để kiểm tra hoặc xoá sạch dữ liệu lỗi.
+      </div>
     </div>
   )
 }
