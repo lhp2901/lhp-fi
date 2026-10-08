@@ -164,6 +164,7 @@ const getDayText = (day: number): string => {
           { key: 'dashboard', label: '📊 Dashboard' },
           { key: 'market', label: '🌏 Thị Trường' },
           { key: 'analysis', label: '📈 Cổ phiếu' },
+          { key: 'derivatives', label: '⚡ Phái sinh', href: 'https://vn30f1m.trunghsgs.edu.vn/' },
           { key: 'crypto', label: '💎 Crypto' },
           { key: 'portfolio', label: '💼 Giao dịch' },
         ].map((tab) => (
