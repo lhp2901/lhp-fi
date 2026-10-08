@@ -159,7 +159,7 @@ const getDayText = (day: number): string => {
       </div>
  
 
-      {/* 🔥 Tabs */}
+    {/* 🔥 Tabs */}
       <div className="flex gap-3 flex-wrap mb-4">
         {[
           { key: 'dashboard', label: '📊 Dashboard' },
