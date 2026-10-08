@@ -164,20 +164,13 @@ const getDayText = (day: number): string => {
           { key: 'dashboard', label: '📊 Dashboard' },
           { key: 'market', label: '🌏 Thị Trường' },
           { key: 'analysis', label: '📈 Cổ phiếu' },
-          { key: 'derivatives', label: '⚡ Phái sinh', href: 'https://vn30f1m.trunghsgs.edu.vn/' },
+          { key: 'derivatives', label: '⚡ Phái sinh'},
           { key: 'crypto', label: '💎 Crypto' },
           { key: 'portfolio', label: '💼 Giao dịch' },
         ].map((tab) => (
           <button
             key={tab.key}
-            onClick={() => {
-              if (tab.href) {
-                window.open(tab.href, '_blank');
-                return;
-              }
-      
-              setActiveTab(tab.key as TabKey);
-            }}
+            onClick={() => setActiveTab(tab.key as TabKey)}
             className={`px-4 py-2 rounded-md text-sm font-medium border ${
               activeTab === tab.key
                 ? 'bg-indigo-600 text-white'
