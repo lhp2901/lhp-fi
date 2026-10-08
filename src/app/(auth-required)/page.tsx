@@ -157,7 +157,8 @@ const getDayText = (day: number): string => {
           )}
         </div>
       </div>
-  
+ 
+
       {/* 🔥 Tabs */}
       <div className="flex gap-3 flex-wrap mb-4">
         {[
@@ -197,8 +198,6 @@ const getDayText = (day: number): string => {
           )
         ))}
       </div>
-
-
 
       {/* 💾 Nội dung từng tab */}
       {activeTab === 'dashboard' && (

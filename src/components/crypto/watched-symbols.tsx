@@ -64,38 +64,44 @@ export default function CryptoWatchlistPage() {
   }
 
   const handleAddSymbol = async () => {
-    const symbol = newSymbol.trim()
+  let symbol = newSymbol.trim().toUpperCase();
 
-    if (!/^[A-Z0-9]+$/.test(symbol)) {
-      return toast.warning('⚠️ Tên coin phải viết HOA và không chứa ký tự đặc biệt!')
-    }
-
-    const upperSymbol = symbol.toUpperCase()
-    const exists = symbols.some((item) => item.symbol === upperSymbol)
-    if (exists) return toast.warning('⚠️ Coin này đã có trong danh sách!')
-
-    setAdding(true)
-
-    const { error } = await supabase.from('watched_symbols').insert([
-      {
-        symbol: upperSymbol,
-        user_id: userId,
-        interval: interval || '5',
-        candle_limit: candleLimit || 100
-      },
-    ])
-
-    if (error) {
-      toast.error('❌ Lỗi khi thêm coin!')
-      console.error(error)
-    } else {
-      toast.success(`✅ Đã thêm ${symbol}!`)
-      setNewSymbol('')
-      fetchSymbols()
-    }
-
-    setAdding(false)
+  // Nếu chỉ nhập tên coin (VD: BTC), tự gắn thêm USDT
+  if (!symbol.endsWith("USDT") && symbol.length <= 6) {
+    symbol += "USDT";
   }
+
+  // Kiểm tra ký tự hợp lệ
+  if (!/^[A-Z0-9]+$/.test(symbol)) {
+    return toast.warning('⚠️ Tên coin phải viết HOA và không chứa ký tự đặc biệt!');
+  }
+
+  // Check trùng
+  const exists = symbols.some((item) => item.symbol === symbol);
+  if (exists) return toast.warning('⚠️ Coin này đã có trong danh sách!');
+
+  setAdding(true);
+
+  const { error } = await supabase.from('watched_symbols').insert([
+    {
+      symbol: symbol,
+      user_id: userId,
+      interval: interval || '5',
+      candle_limit: candleLimit || 100
+    },
+  ]);
+
+  if (error) {
+    toast.error('❌ Lỗi khi thêm coin!');
+    console.error(error);
+  } else {
+    toast.success(`✅ Đã thêm ${symbol}!`);
+    setNewSymbol('');
+    fetchSymbols();
+  }
+
+  setAdding(false);
+};
 
   const handleDeleteSymbol = async (id: number) => {
     const { error } = await supabase.from('watched_symbols').delete().eq('id', id)
@@ -187,7 +193,7 @@ export default function CryptoWatchlistPage() {
       <div className="flex flex-col gap-4 mb-6">
         <input
           type="text"
-          placeholder="Nhập coin (VD: BTCUSDT)"
+          placeholder="Nhập coin (VD: BTC hoặc BTCUSDT)"
           value={newSymbol}
           onChange={(e) => setNewSymbol(e.target.value.toUpperCase())}
           className="w-full px-4 py-3 border border-gray-300 rounded-lg text-black dark:text-white dark:bg-slate-800 focus:outline-none"
