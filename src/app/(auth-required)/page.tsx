@@ -170,7 +170,14 @@ const getDayText = (day: number): string => {
         ].map((tab) => (
           <button
             key={tab.key}
-            onClick={() => setActiveTab(tab.key as TabKey)}
+            onClick={() => {
+              if (tab.href) {
+                window.open(tab.href, '_blank');
+                return;
+              }
+      
+              setActiveTab(tab.key as TabKey);
+            }}
             className={`px-4 py-2 rounded-md text-sm font-medium border ${
               activeTab === tab.key
                 ? 'bg-indigo-600 text-white'
