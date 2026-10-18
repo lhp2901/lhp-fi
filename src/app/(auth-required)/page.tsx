@@ -157,6 +157,7 @@ const getDayText = (day: number): string => {
           )}
         </div>
       </div>
+<<<<<<< HEAD
  
 
     {/* 🔥 Tabs */}
@@ -198,6 +199,49 @@ const getDayText = (day: number): string => {
           )
         ))}
       </div>
+=======
+  
+    {/* 🔥 Tabs */}
+    <div className="flex gap-3 flex-wrap mb-4">
+      {[
+        { key: 'dashboard', label: '📊 Dashboard' },
+        { key: 'market', label: '🌏 Thị Trường' },
+        { key: 'analysis', label: '📈 Cổ phiếu' },
+        {
+          key: 'derivatives',
+          label: '⚡ Phái sinh',
+          href: 'https://vn30f1m.trunghsgs.edu.vn/',
+        },
+        { key: 'crypto', label: '💎 Crypto' },
+        { key: 'portfolio', label: '💼 Giao dịch' },
+      ].map((tab) => (
+        tab.href ? (
+          <a
+            key={tab.key}
+            href={tab.href}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="px-4 py-2 rounded-md text-sm font-medium border text-slate-200 hover:bg-white/10"
+          >
+            {tab.label}
+          </a>
+        ) : (
+          <button
+            key={tab.key}
+            onClick={() => setActiveTab(tab.key as TabKey)}
+            className={`px-4 py-2 rounded-md text-sm font-medium border ${
+              activeTab === tab.key
+                ? 'bg-indigo-600 text-white'
+                : 'text-slate-200 hover:bg-white/10'
+            }`}
+          >
+            {tab.label}
+          </button>
+        )
+      ))}
+    </div>
+
+>>>>>>> origin/master
 
       {/* 💾 Nội dung từng tab */}
       {activeTab === 'dashboard' && (
