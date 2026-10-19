@@ -166,7 +166,7 @@ const getDayText = (day: number): string => {
         { key: 'analysis', label: '📈 Cổ phiếu' },
         {
           key: 'derivatives',
-          label: '⚡ Phái sinh',
+          label: '⚡ BOOKMAP VN30F1M',
           href: 'https://vn30f1m.trunghsgs.edu.vn/',
         },
         { key: 'crypto', label: '💎 Crypto' },
