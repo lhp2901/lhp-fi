@@ -70,36 +70,37 @@ const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
   const vnSheet = workbook.Sheets['VN30']
   const rawVN = XLSX.utils.sheet_to_json(vnSheet, { header: 1 }) as any[][]
   const vnData: VN30Row[] = rawVN.slice(2).map((row) => ({
-    date: parseDate(row[0]) || '',
-    close: parseNumber(row[1]) || 0,
-    open: parseNumber(row[8]) || 0,
-    high: parseNumber(row[9]) || 0,
-    low: parseNumber(row[10]) || 0,
-    volume: parseNumber(row[4]) || 0,
-    value: parseNumber(row[5]) || 0,
+    date: parseDate(row[1]) || '',
+    close: parseNumber(row[2]) || 0,
+    open: parseNumber(row[9]) || 0,
+    high: parseNumber(row[10]) || 0,
+    low: parseNumber(row[11]) || 0,
+    volume: parseNumber(row[5]) || 0,
+    value: parseNumber(row[6]) || 0,
     user_id,
   }))
 
   const fkSheet = workbook.Sheets['KHOINGOAI']
   const rawFK = fkSheet ? XLSX.utils.sheet_to_json(fkSheet, { header: 1 }) as any[][] : []
   const fkData: VN30Row[] = rawFK.slice(2).map((row) => ({
-    date: parseDate(row[0]) || '',
-    foreign_buy_value: parseNumber(row[5]) || 0,
-    foreign_sell_value: parseNumber(row[7]) || 0,
+    date: parseDate(row[1]) || '',
+    foreign_buy_value: parseNumber(row[6]) || 0,
+    foreign_sell_value: parseNumber(row[8]) || 0,
     user_id,
   }))
 
-  const tdSheet = workbook.Sheets['TUDOANH']
-  const rawTD = tdSheet ? XLSX.utils.sheet_to_json(tdSheet, { header: 1 }) as any[][] : []
-  const tdData: VN30Row[] = rawTD
-    .slice(2)
-    .filter((row) => row[0] === 'VN30')
-    .map((row) => ({
-      date: parseDate(row[1]) || '',
-      proprietary_buy_value: parseNumber(row[3]) || 0,
-      proprietary_sell_value: parseNumber(row[5]) || 0,
-      user_id,
-    }))
+  // ── TUDOANH Sheet ───────────────────────────────
+   const tdSheet = workbook.Sheets['TUDOANH']
+   const rawTD = tdSheet ? XLSX.utils.sheet_to_json(tdSheet, { header: 1 }) as any[][] : []
+   const tdData: VN30Row[] = rawTD
+     .slice(2)
+     .filter(row => row[0] === 'VN30INDEX')
+     .map(row => ({
+       date: parseDate(row[1]) || '',
+       proprietary_buy_value: parseNumber(row[3]) || 0,
+       proprietary_sell_value: parseNumber(row[5]) || 0,
+       user_id,
+     }))
 
   const merged = mergeByDate([vnData, fkData, tdData])
   const cleaned = merged.filter((r) => r.date)

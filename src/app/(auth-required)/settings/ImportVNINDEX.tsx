@@ -74,13 +74,13 @@ export default function ImportVNINDEX() {
   const vnSheet = workbook.Sheets['VNINDEX']
   const rawVN = XLSX.utils.sheet_to_json(vnSheet, { header: 1 }) as any[][]
   const vnData: VNIndexRow[] = rawVN.slice(2).map(row => ({
-    date: parseDate(row[0]) || '',
-    close: parseNumber(row[1]) || 0,
-    open: parseNumber(row[8]) || 0,
-    high: parseNumber(row[9]) || 0,
-    low: parseNumber(row[10]) || 0,
-    volume: parseNumber(row[4]) || 0,
-    value: parseNumber(row[5]) || 0,
+    date: parseDate(row[1]) || '',
+    close: parseNumber(row[2]) || 0,
+    open: parseNumber(row[9]) || 0,
+    high: parseNumber(row[10]) || 0,
+    low: parseNumber(row[11]) || 0,
+    volume: parseNumber(row[5]) || 0,
+    value: parseNumber(row[6]) || 0,
     user_id,
   }))
 
@@ -88,9 +88,9 @@ export default function ImportVNINDEX() {
   const fkSheet = workbook.Sheets['KHOINGOAI']
   const rawFK = fkSheet ? XLSX.utils.sheet_to_json(fkSheet, { header: 1 }) as any[][] : []
   const fkData: VNIndexRow[] = rawFK.slice(2).map(row => ({
-    date: parseDate(row[0]) || '',
-    foreign_buy_value: parseNumber(row[5]) || 0,
-    foreign_sell_value: parseNumber(row[7]) || 0,
+    date: parseDate(row[1]) || '',
+    foreign_buy_value: parseNumber(row[6]) || 0,
+    foreign_sell_value: parseNumber(row[8]) || 0,
     user_id,
   }))
 
