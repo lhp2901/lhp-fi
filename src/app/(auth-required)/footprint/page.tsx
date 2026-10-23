@@ -39,8 +39,10 @@ message?: string
 }
 
 const API_BASE = (
-  process.env.NEXT_PUBLIC_LHP_AI_SERVER_URL ||
-  'https://lhp-ai-server.onrender.com'
+process.env.NEXT_PUBLIC_LHP_AI_SERVER_URL ||
+(process.env.NODE_ENV === 'development'
+? 'http://127.0.0.1:10000'
+: 'https://lhp-ai-server.onrender.com')
 ).replace(/\/+$/, '')
 
 const DEFAULT_SYMBOLS = [
