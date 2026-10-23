@@ -1,233 +1,865 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
 import { createClient } from '@supabase/supabase-js'
 import {
   calculatePnL,
   formatNumber,
 } from '@/lib/utils'
 import {
-  PieChart, Pie, Cell, Tooltip, ResponsiveContainer,
-  BarChart, Bar, XAxis, YAxis, CartesianGrid,
+  PieChart,
+  Pie,
+  Cell,
+  Tooltip,
+  ResponsiveContainer,
+  BarChart,
+  Bar,
+  XAxis,
+  YAxis,
+  CartesianGrid,
 } from 'recharts'
 import EditTransactionForm from './EditTransactionForm'
 
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-)
+// =====================================================
+// SUPABASE
+// =====================================================
 
-const COLORS = ['#FFBB28', '#00C49F', '#8884d8']
+const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
+const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
+
+const supabase =
+  supabaseUrl && supabaseAnonKey
+    ? createClient(supabaseUrl, supabaseAnonKey)
+    : null
+
+const COLORS = ['#FFBB28', '#00C49F', '#8884d8', '#FF8042', '#0088FE']
+
+type Transaction = {
+  id: string | number
+  assetname: string
+  category: string
+  buyprice: number | string | null
+  currentprice: number | string | null
+  sellprice: number | string | null
+  quantity: number | string | null
+  transactionfee?: number | string | null
+  sellfee?: number | string | null
+  issold: boolean
+  created_at?: string
+  [key: string]: unknown
+}
+
+type CategoryItem = {
+  name: string
+  value: number
+}
+
+type ChartTransaction = Transaction & {
+  pnl: number
+}
+
+// =====================================================
+// HÀM HỖ TRỢ
+// =====================================================
+
+function toNumber(value: unknown): number {
+  if (value === null || value === undefined || value === '') {
+    return 0
+  }
+
+  const numberValue = Number(value)
+
+  return Number.isFinite(numberValue) ? numberValue : 0
+}
+
+function getTransactionPrice(tx: Transaction): number {
+  return toNumber(tx.issold ? tx.sellprice : tx.currentprice)
+}
+
+function getTransactionPnL(tx: Transaction): number {
+  return toNumber(
+    calculatePnL(
+      toNumber(tx.buyprice),
+      getTransactionPrice(tx),
+      toNumber(tx.quantity)
+    )
+  )
+}
+
+function getLocalDateString(date: Date): string {
+  const year = date.getFullYear()
+  const month = String(date.getMonth() + 1).padStart(2, '0')
+  const day = String(date.getDate()).padStart(2, '0')
+
+  return `${year}-${month}-${day}`
+}
+
+function getStartDate(filterType: string, today: Date): Date | null {
+  const from = new Date(today)
+
+  switch (filterType) {
+    case 'Ngày':
+      from.setDate(from.getDate() - 1)
+      return from
+
+    case 'Tuần':
+      from.setDate(from.getDate() - 7)
+      return from
+
+    case 'Tháng':
+      from.setMonth(from.getMonth() - 1)
+      return from
+
+    default:
+      return null
+  }
+}
+
+// =====================================================
+// COMPONENT
+// =====================================================
 
 export default function DashboardReport() {
-  const [transactions, setTransactions] = useState<any[]>([])
-  const [editingTx, setEditingTx] = useState<any | null>(null)
+  const [transactions, setTransactions] = useState<Transaction[]>([])
+  const [editingTx, setEditingTx] = useState<Transaction | null>(null)
 
-  const [filterType, setFilterType] = useState('Tùy chọn')
+  const [filterType, setFilterType] = useState('Tháng')
   const [startDate, setStartDate] = useState('')
   const [endDate, setEndDate] = useState('')
 
-  const fetchData = async (from?: string, to?: string) => {
-    let query = supabase.from('portfolio_transactions').select('*')
-    if (from && to) {
-      query = query.gte('created_at', from).lte('created_at', to)
-    }
-    const { data, error } = await query
-    if (!error && data) setTransactions(data)
-  }
+  const [loading, setLoading] = useState(false)
+  const [errorMessage, setErrorMessage] = useState('')
+  const [hasLoaded, setHasLoaded] = useState(false)
+
+  // ===================================================
+  // TẢI DỮ LIỆU
+  // ===================================================
+
+  const fetchData = useCallback(
+    async (from?: string, to?: string) => {
+      if (!supabase) {
+        setErrorMessage(
+          'Thiếu NEXT_PUBLIC_SUPABASE_URL hoặc NEXT_PUBLIC_SUPABASE_ANON_KEY.'
+        )
+        setTransactions([])
+        setHasLoaded(true)
+        return
+      }
+
+      if (from && to && from > to) {
+        setErrorMessage('Ngày bắt đầu không được lớn hơn ngày kết thúc.')
+        return
+      }
+
+      setLoading(true)
+      setErrorMessage('')
+
+      try {
+        let query = supabase
+          .from('portfolio_transactions')
+          .select('*')
+          .order('created_at', { ascending: false })
+
+        // Lọc từ đầu ngày bắt đầu.
+        if (from) {
+          query = query.gte(
+            'created_at',
+            `${from}T00:00:00.000Z`
+          )
+        }
+
+        // Lấy đến hết ngày kết thúc:
+        // nhỏ hơn thời điểm đầu ngày kế tiếp.
+        if (to) {
+          const [year, month, day] = to.split('-').map(Number)
+
+          const nextDay = new Date(
+            Date.UTC(year, month - 1, day + 1)
+          )
+
+          query = query.lt(
+            'created_at',
+            nextDay.toISOString()
+          )
+        }
+
+        const { data, error } = await query
+
+        if (error) {
+          console.error('Lỗi Supabase khi tải báo cáo:', error)
+
+          setErrorMessage(
+            `Không thể tải dữ liệu: ${error.message}`
+          )
+
+          setTransactions([])
+          return
+        }
+
+        setTransactions((data ?? []) as Transaction[])
+      } catch (error) {
+        console.error('Lỗi tải báo cáo:', error)
+
+        setErrorMessage(
+          error instanceof Error
+            ? error.message
+            : 'Đã xảy ra lỗi không xác định khi tải báo cáo.'
+        )
+
+        setTransactions([])
+      } finally {
+        setLoading(false)
+        setHasLoaded(true)
+      }
+    },
+    []
+  )
+
+  // ===================================================
+  // TỰ ĐỘNG LỌC THEO NGÀY / TUẦN / THÁNG
+  // ===================================================
 
   useEffect(() => {
-    const today = new Date()
-    let from = new Date()
-
-    if (filterType === 'Tuần') {
-      from.setDate(today.getDate() - 7)
-    } else if (filterType === 'Tháng') {
-      from.setMonth(today.getMonth() - 1)
-    } else if (filterType === 'Ngày') {
-      from.setDate(today.getDate() - 1)
-    } else {
-      // Nếu là Tùy chọn thì đợi người dùng bấm "Lọc"
+    if (filterType === 'Tùy chọn') {
       return
     }
 
-    const fromDate = from.toISOString().split('T')[0]
-    const toDate = today.toISOString().split('T')[0]
-    fetchData(fromDate, toDate)
-  }, [filterType])
+    const today = new Date()
+    const from = getStartDate(filterType, today)
 
-  const totalInvested = transactions.reduce((sum, tx) => sum + tx.quantity * tx.buyprice, 0)
-  const totalFee = transactions.reduce((sum, tx) => sum + (tx.transactionfee || 0) + (tx.sellfee || 0), 0)
-  const totalPnL = transactions.reduce((sum, tx) => {
-    const price = tx.issold ? tx.sellprice : tx.currentprice
-    return sum + calculatePnL(tx.buyprice, price, tx.quantity)
-  }, 0)
-  const netProfit = totalPnL - totalFee
+    if (!from) {
+      return
+    }
 
-  const gainers = transactions.filter((tx) => {
-    const price = tx.issold ? tx.sellprice : tx.currentprice
-    return calculatePnL(tx.buyprice, price, tx.quantity) > 0
-  })
+    const fromDate = getLocalDateString(from)
+    const toDate = getLocalDateString(today)
 
-  const losers = transactions.length - gainers.length
+    setStartDate(fromDate)
+    setEndDate(toDate)
 
-  const categoryDist = Object.entries(
-    transactions.reduce((acc, tx) => {
-      acc[tx.category] = (acc[tx.category] || 0) + tx.quantity * tx.buyprice
+    void fetchData(fromDate, toDate)
+  }, [filterType, fetchData])
+
+  // ===================================================
+  // TÍNH TOÁN BÁO CÁO
+  // ===================================================
+
+  const report = useMemo(() => {
+    const totalInvested = transactions.reduce((sum, tx) => {
+      return (
+        sum +
+        toNumber(tx.quantity) *
+          toNumber(tx.buyprice)
+      )
+    }, 0)
+
+    const totalFee = transactions.reduce((sum, tx) => {
+      return (
+        sum +
+        toNumber(tx.transactionfee) +
+        toNumber(tx.sellfee)
+      )
+    }, 0)
+
+    const totalPnL = transactions.reduce((sum, tx) => {
+      return sum + getTransactionPnL(tx)
+    }, 0)
+
+    const netProfit = totalPnL - totalFee
+
+    const gainers = transactions.filter(
+      (tx) => getTransactionPnL(tx) > 0
+    )
+
+    const losers = transactions.filter(
+      (tx) => getTransactionPnL(tx) < 0
+    )
+
+    const categoryMap = transactions.reduce<
+      Record<string, number>
+    >((acc, tx) => {
+      const category = tx.category || 'Chưa phân loại'
+
+      acc[category] =
+        (acc[category] || 0) +
+        toNumber(tx.quantity) *
+          toNumber(tx.buyprice)
+
       return acc
-    }, {} as Record<string, number>)
-  ).map(([name, value]) => ({ name, value }))
+    }, {})
 
-  const sortedByPnL = [...transactions].sort((a, b) => {
-    const pnlA = calculatePnL(a.buyprice, a.issold ? a.sellprice : a.currentprice, a.quantity)
-    const pnlB = calculatePnL(b.buyprice, b.issold ? b.sellprice : b.currentprice, b.quantity)
-    return pnlB - pnlA
-  })
+    const categoryDist: CategoryItem[] = Object.entries(
+      categoryMap
+    ).map(([name, value]) => ({
+      name,
+      value,
+    }))
+
+    const sortedByPnL: ChartTransaction[] = transactions
+      .map((tx) => ({
+        ...tx,
+        pnl: getTransactionPnL(tx),
+      }))
+      .sort((a, b) => b.pnl - a.pnl)
+
+    return {
+      totalInvested,
+      totalFee,
+      totalPnL,
+      netProfit,
+      gainers,
+      losers,
+      categoryDist,
+      sortedByPnL,
+    }
+  }, [transactions])
+
+  const {
+    totalInvested,
+    totalFee,
+    totalPnL,
+    netProfit,
+    gainers,
+    losers,
+    categoryDist,
+    sortedByPnL,
+  } = report
+
+  // ===================================================
+  // LỌC THỦ CÔNG
+  // ===================================================
+
+  const handleFilter = () => {
+    if (!startDate || !endDate) {
+      setErrorMessage(
+        'Vui lòng chọn đầy đủ ngày bắt đầu và ngày kết thúc.'
+      )
+      return
+    }
+
+    void fetchData(startDate, endDate)
+  }
+
+  // ===================================================
+  // GIAO DIỆN
+  // ===================================================
 
   return (
-    <div className="p-6 space-y-6 text-white max-w-7xl mx-auto">
+    <div className="mx-auto max-w-7xl space-y-6 p-4 text-white sm:p-6">
 
-      {/* Bộ lọc */}
-      <div className="bg-zinc-900 p-4 rounded-xl">
-        <div className="flex flex-wrap gap-2 items-center mb-2">
-          <label className="text-sm">📅 Lọc theo:</label>
+      {/* TIÊU ĐỀ */}
+
+      <div>
+        <h1 className="text-2xl font-bold sm:text-3xl">
+          📊 Báo Cáo Danh Mục Đầu Tư
+        </h1>
+
+        <p className="mt-1 text-sm text-gray-400">
+          Theo dõi hiệu quả giao dịch, lợi nhuận và phân bổ
+          danh mục.
+        </p>
+      </div>
+
+      {/* BỘ LỌC */}
+
+      <div className="rounded-xl bg-zinc-900 p-4">
+        <h2 className="mb-3 text-lg font-semibold">
+          📅 Bộ lọc thời gian
+        </h2>
+
+        <div className="flex flex-wrap items-center gap-3">
+
+          <label htmlFor="filterType" className="text-sm">
+            Lọc theo:
+          </label>
+
           <select
-            className="bg-zinc-800 text-white p-1 rounded"
+            id="filterType"
+            className="rounded bg-zinc-800 p-2 text-white"
             value={filterType}
             onChange={(e) => setFilterType(e.target.value)}
           >
-            <option>Ngày</option>
-            <option>Tuần</option>
-            <option>Tháng</option>
-            <option>Tùy chọn</option>
+            <option value="Ngày">Ngày</option>
+            <option value="Tuần">Tuần</option>
+            <option value="Tháng">Tháng</option>
+            <option value="Tùy chọn">Tùy chọn</option>
           </select>
 
-          <input type="date" value={startDate} onChange={(e) => setStartDate(e.target.value)} className="bg-zinc-800 text-white p-1 rounded" />
-          <span className="text-white">-</span>
-          <input type="date" value={endDate} onChange={(e) => setEndDate(e.target.value)} className="bg-zinc-800 text-white p-1 rounded" />
-          <button onClick={() => fetchData(startDate, endDate)} className="bg-blue-500 text-white px-2 py-1 rounded">Lọc</button>
+          <input
+            type="date"
+            aria-label="Ngày bắt đầu"
+            value={startDate}
+            onChange={(e) => setStartDate(e.target.value)}
+            className="rounded bg-zinc-800 p-2 text-white"
+          />
+
+          <span className="text-gray-400">Đến</span>
+
+          <input
+            type="date"
+            aria-label="Ngày kết thúc"
+            value={endDate}
+            onChange={(e) => setEndDate(e.target.value)}
+            className="rounded bg-zinc-800 p-2 text-white"
+          />
+
+          <button
+            type="button"
+            onClick={handleFilter}
+            disabled={loading}
+            className="rounded bg-blue-600 px-4 py-2 font-medium transition hover:bg-blue-500 disabled:cursor-not-allowed disabled:opacity-50"
+          >
+            {loading ? 'Đang tải...' : 'Lọc báo cáo'}
+          </button>
+
+          <button
+            type="button"
+            onClick={() => {
+              setFilterType('Tùy chọn')
+              setStartDate('')
+              setEndDate('')
+              void fetchData()
+            }}
+            disabled={loading}
+            className="rounded bg-zinc-700 px-4 py-2 transition hover:bg-zinc-600 disabled:opacity-50"
+          >
+            Toàn bộ lịch sử
+          </button>
+
+        </div>
+
+        {loading && (
+          <div className="mt-4 rounded-lg bg-blue-950/50 p-3 text-sm text-blue-300">
+            ⏳ Đang tải dữ liệu báo cáo...
+          </div>
+        )}
+
+        {errorMessage && (
+          <div
+            role="alert"
+            className="mt-4 rounded-lg border border-red-800 bg-red-950/40 p-3 text-sm text-red-300"
+          >
+            ❌ {errorMessage}
+          </div>
+        )}
+
+        {!loading && !errorMessage && hasLoaded && (
+          <p className="mt-3 text-sm text-gray-400">
+            Đã tải {transactions.length} giao dịch.
+          </p>
+        )}
+      </div>
+
+      {/* TỔNG QUAN */}
+
+      <div className="rounded-xl bg-zinc-900 p-4">
+        <h2 className="mb-4 text-xl font-bold">
+          🧠 Tổng Quan Danh Mục
+        </h2>
+
+        <div className="grid grid-cols-1 gap-4 text-sm sm:grid-cols-2 lg:grid-cols-3">
+
+          <div className="rounded-lg bg-zinc-800/70 p-3">
+            <p className="text-gray-400">
+              💼 Tổng vốn đầu tư
+            </p>
+
+            <p className="mt-1 text-lg font-semibold text-yellow-400">
+              {formatNumber(totalInvested)} đ
+            </p>
+          </div>
+
+          <div className="rounded-lg bg-zinc-800/70 p-3">
+            <p className="text-gray-400">
+              📈 Giao dịch lãi
+            </p>
+
+            <p className="mt-1 text-lg font-semibold text-green-400">
+              {gainers.length}
+            </p>
+          </div>
+
+          <div className="rounded-lg bg-zinc-800/70 p-3">
+            <p className="text-gray-400">
+              📉 Giao dịch lỗ
+            </p>
+
+            <p className="mt-1 text-lg font-semibold text-red-400">
+              {losers.length}
+            </p>
+          </div>
+
+          <div className="rounded-lg bg-zinc-800/70 p-3">
+            <p className="text-gray-400">
+              💰 Lãi/lỗ sau phí
+            </p>
+
+            <p
+              className={`mt-1 text-lg font-semibold ${
+                netProfit >= 0
+                  ? 'text-green-400'
+                  : 'text-red-400'
+              }`}
+            >
+              {formatNumber(netProfit)} đ
+            </p>
+          </div>
+
+          <div className="rounded-lg bg-zinc-800/70 p-3">
+            <p className="text-gray-400">
+              💸 Tổng phí giao dịch
+            </p>
+
+            <p className="mt-1 text-lg font-semibold text-orange-400">
+              {formatNumber(totalFee)} đ
+            </p>
+          </div>
+
+          <div className="rounded-lg bg-zinc-800/70 p-3">
+            <p className="text-gray-400">
+              🗂 Tổng giao dịch
+            </p>
+
+            <p className="mt-1 text-lg font-semibold text-blue-400">
+              {transactions.length}
+            </p>
+          </div>
+
         </div>
       </div>
 
-      {/* Tổng quan danh mục */}
-      <div className="bg-zinc-900 p-4 rounded-xl">
-        <h2 className="text-xl font-bold mb-4">🧠 Tổng Quan Danh Mục</h2>
-        <div className="flex flex-wrap gap-6 text-sm">
-          <div className="text-yellow-400 whitespace-nowrap">💼 Tổng đầu tư: {formatNumber(totalInvested)} đ</div>
-          <div className="text-green-400 whitespace-nowrap">📈 Giao dịch lãi: {gainers.length}</div>
-          <div className="text-red-400 whitespace-nowrap">📉 Giao dịch lỗ: {losers}</div>
-          <div className="text-blue-400 whitespace-nowrap">💰 Lãi sau phí: {formatNumber(netProfit)} đ</div>
-          <div className="text-gray-300 whitespace-nowrap">🗂 Tổng giao dịch: {transactions.length}</div>
+      {/* BIỂU ĐỒ */}
+
+      <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
+
+        {/* PHÂN BỔ DANH MỤC */}
+
+        <div className="min-w-0 rounded-xl bg-zinc-900 p-4">
+          <h2 className="mb-4 text-lg font-bold">
+            📊 Phân Bổ Danh Mục
+          </h2>
+
+          {categoryDist.length > 0 ? (
+            <ResponsiveContainer width="100%" height={280}>
+              <PieChart>
+                <Pie
+                  data={categoryDist}
+                  dataKey="value"
+                  nameKey="name"
+                  cx="50%"
+                  cy="50%"
+                  outerRadius={95}
+                  label
+                >
+                  {categoryDist.map((entry, index) => (
+                    <Cell
+                      key={`category-${entry.name}-${index}`}
+                      fill={COLORS[index % COLORS.length]}
+                    />
+                  ))}
+                </Pie>
+
+                <Tooltip
+                  formatter={(value) => formatNumber(Number(value ?? 0))}
+                  contentStyle={{
+                    backgroundColor: '#18181b',
+                    border: '1px solid #3f3f46',
+                    borderRadius: '8px',
+                    color: '#fff',
+                  }}
+                />
+              </PieChart>
+            </ResponsiveContainer>
+          ) : (
+            <div className="flex h-[280px] items-center justify-center text-sm text-gray-500">
+              {loading
+                ? 'Đang tải dữ liệu...'
+                : 'Chưa có dữ liệu để hiển thị biểu đồ.'}
+            </div>
+          )}
         </div>
+
+        {/* TOP 5 GIAO DỊCH */}
+
+        <div className="min-w-0 rounded-xl bg-zinc-900 p-4">
+          <h2 className="mb-4 text-lg font-bold">
+            🔍 Top 5 Giao Dịch Theo Lãi/Lỗ
+          </h2>
+
+          {sortedByPnL.length > 0 ? (
+            <ResponsiveContainer width="100%" height={280}>
+              <BarChart
+                data={sortedByPnL.slice(0, 5)}
+                margin={{
+                  top: 10,
+                  right: 10,
+                  left: 10,
+                  bottom: 5,
+                }}
+              >
+                <CartesianGrid
+                  strokeDasharray="3 3"
+                  stroke="#3f3f46"
+                />
+
+                <XAxis
+                  dataKey="assetname"
+                  stroke="#a1a1aa"
+                  tick={{ fontSize: 12 }}
+                />
+
+                <YAxis
+                  stroke="#a1a1aa"
+                  tick={{ fontSize: 11 }}
+                  tickFormatter={(value) =>
+                    new Intl.NumberFormat('vi-VN', {
+                      notation: 'compact',
+                      maximumFractionDigits: 1,
+                    }).format(value)
+                  }
+                />
+
+                <Tooltip
+                  formatter={(value) => formatNumber(Number(value ?? 0))}
+                  contentStyle={{
+                    backgroundColor: '#18181b',
+                    border: '1px solid #3f3f46',
+                    borderRadius: '8px',
+                    color: '#fff',
+                  }}
+                />
+
+                <Bar
+                  dataKey="pnl"
+                  name="Lãi/lỗ"
+                  radius={[4, 4, 0, 0]}
+                  fill="#8884d8"
+                />
+              </BarChart>
+            </ResponsiveContainer>
+          ) : (
+            <div className="flex h-[280px] items-center justify-center text-sm text-gray-500">
+              {loading
+                ? 'Đang tải dữ liệu...'
+                : 'Chưa có giao dịch để hiển thị.'}
+            </div>
+          )}
+        </div>
+
       </div>
 
-      {/* Biểu đồ chia đôi */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        <div className="bg-zinc-900 p-4 rounded-xl">
-          <h2 className="text-xl font-bold mb-4">📊 Phân Bổ Danh Mục</h2>
-          <ResponsiveContainer width="100%" height={250}>
-            <PieChart>
-              <Pie data={categoryDist} dataKey="value" nameKey="name" outerRadius={100}>
-                {categoryDist.map((entry, index) => (
-                  <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
-                ))}
-              </Pie>
-              <Tooltip formatter={(value: any) => `${formatNumber(value)} đ`} />
-            </PieChart>
-          </ResponsiveContainer>
-        </div>
+      {/* DANH SÁCH GIAO DỊCH */}
 
-        <div className="bg-zinc-900 p-4 rounded-xl">
-          <h2 className="text-xl font-bold mb-2">🔍 Top 5 Giao Dịch Theo Lãi</h2>
-          <ResponsiveContainer width="100%" height={250}>
-            <BarChart data={sortedByPnL.slice(0, 5)}>
-              <CartesianGrid strokeDasharray="3 3" />
-              <XAxis dataKey="assetname" />
-              <YAxis />
-              <Tooltip formatter={(value: any) => `${formatNumber(value)} đ`} />
-              <Bar
-                dataKey={(tx) => calculatePnL(tx.buyprice, tx.issold ? tx.sellprice : tx.currentprice, tx.quantity)}
-                fill="#8884d8"
-              />
-            </BarChart>
-          </ResponsiveContainer>
-        </div>
-      </div>
+      <div className="overflow-x-auto rounded-xl bg-zinc-900 p-4">
+        <h2 className="mb-4 text-xl font-bold">
+          📋 Danh Sách Giao Dịch
+        </h2>
 
-      {/* Danh sách giao dịch */}
-      <div className="bg-zinc-900 p-4 rounded-xl overflow-x-auto">
-        <h2 className="text-xl font-bold mb-2">📋 Danh Sách Giao Dịch</h2>
-        <table className="min-w-full text-sm text-left text-white">
+        <table className="min-w-full text-left text-sm text-white">
           <thead>
-            <tr className="border-b border-gray-700">
-              <th className="p-2">Mã</th>
-              <th className="p-2">Danh mục</th>
-              <th className="p-2">Lãi/lỗ</th>
-              <th className="p-2">Trạng thái</th>
-              <th className="p-2">✏️</th>
+            <tr className="border-b border-gray-700 text-gray-300">
+              <th className="whitespace-nowrap p-3">Mã</th>
+              <th className="whitespace-nowrap p-3">Danh mục</th>
+              <th className="whitespace-nowrap p-3">Giá mua</th>
+              <th className="whitespace-nowrap p-3">Giá hiện tại/bán</th>
+              <th className="whitespace-nowrap p-3">Số lượng</th>
+              <th className="whitespace-nowrap p-3">Lãi/lỗ</th>
+              <th className="whitespace-nowrap p-3">Trạng thái</th>
+              <th className="whitespace-nowrap p-3">Thao tác</th>
             </tr>
           </thead>
+
           <tbody>
             {transactions.map((tx) => {
-              const price = tx.issold ? tx.sellprice : tx.currentprice
-              const pnl = calculatePnL(tx.buyprice, price, tx.quantity)
+              const pnl = getTransactionPnL(tx)
               const isProfit = pnl >= 0
+
               return (
-                <tr key={tx.id} className="border-b border-gray-800">
-                  <td className="p-2">{tx.assetname}</td>
-                  <td className="p-2">{tx.category}</td>
-                  <td className={`p-2 ${isProfit ? 'text-green-400' : 'text-red-400'}`}>
+                <tr
+                  key={tx.id}
+                  className="border-b border-gray-800 transition hover:bg-zinc-800/60"
+                >
+                  <td className="whitespace-nowrap p-3 font-medium">
+                    {tx.assetname || 'N/A'}
+                  </td>
+
+                  <td className="whitespace-nowrap p-3">
+                    {tx.category || 'Chưa phân loại'}
+                  </td>
+
+                  <td className="whitespace-nowrap p-3">
+                    {formatNumber(toNumber(tx.buyprice))} đ
+                  </td>
+
+                  <td className="whitespace-nowrap p-3">
+                    {formatNumber(getTransactionPrice(tx))} đ
+                  </td>
+
+                  <td className="whitespace-nowrap p-3">
+                    {formatNumber(toNumber(tx.quantity))}
+                  </td>
+
+                  <td
+                    className={`whitespace-nowrap p-3 font-medium ${
+                      isProfit
+                        ? 'text-green-400'
+                        : 'text-red-400'
+                    }`}
+                  >
                     {formatNumber(pnl)} đ
                   </td>
-                  <td className="p-2">{tx.issold ? '✅ Đã bán' : '🕒 Nắm giữ'}</td>
-                  <td className="p-2">
-                    <button onClick={() => setEditingTx(tx)} className="text-blue-400 hover:underline text-sm">
+
+                  <td className="whitespace-nowrap p-3">
+                    {tx.issold
+                      ? '✅ Đã bán'
+                      : '🕒 Nắm giữ'}
+                  </td>
+
+                  <td className="whitespace-nowrap p-3">
+                    <button
+                      type="button"
+                      onClick={() => setEditingTx(tx)}
+                      className="text-blue-400 hover:text-blue-300 hover:underline"
+                    >
                       ✏️ Sửa
                     </button>
                   </td>
                 </tr>
               )
             })}
+
+            {transactions.length === 0 && (
+              <tr>
+                <td
+                  colSpan={8}
+                  className="p-8 text-center text-gray-400"
+                >
+                  {loading
+                    ? 'Đang tải dữ liệu giao dịch...'
+                    : errorMessage
+                      ? 'Không thể tải danh sách giao dịch.'
+                      : 'Không có giao dịch trong khoảng thời gian đã chọn.'}
+                </td>
+              </tr>
+            )}
           </tbody>
         </table>
       </div>
 
-      {/* AI Suggestion */}
-      <div className="bg-zinc-900 p-4 rounded-xl">
-        <h2 className="text-xl font-bold mb-2">💡 Gợi Ý AI</h2>
-        <ul className="list-disc list-inside text-sm text-gray-300">
-          {losers > gainers.length && (
-            <li>Bạn đang có nhiều giao dịch lỗ hơn lãi. Xem xét lại chiến lược?</li>
-          )}
-          {categoryDist.find((c) => c.name === 'Crypto' && (c.value as number) / (totalInvested || 1) > 1) && (
-            <li>Tỷ trọng Crypto đang quá cao trong danh mục. Rủi ro cần cân nhắc!</li>
-          )}
-          {sortedByPnL[0] && (
+      {/* GỢI Ý AI */}
+
+      <div className="rounded-xl bg-zinc-900 p-4">
+        <h2 className="mb-4 text-xl font-bold">
+          💡 Gợi Ý AI
+        </h2>
+
+        {transactions.length === 0 ? (
+          <p className="text-sm text-gray-400">
+            Chưa có đủ dữ liệu giao dịch để đưa ra nhận xét.
+          </p>
+        ) : (
+          <ul className="list-inside list-disc space-y-2 text-sm text-gray-300">
+
+            {losers.length > gainers.length && (
+              <li>
+                Số giao dịch lỗ đang nhiều hơn giao dịch lãi.
+                Hãy rà soát điểm mua, điểm bán và kỷ luật quản
+                trị rủi ro.
+              </li>
+            )}
+
+            {totalInvested > 0 &&
+              categoryDist.some(
+                (category) =>
+                  category.name === 'Crypto' &&
+                  category.value / totalInvested > 0.5
+              ) && (
+                <li>
+                  Tỷ trọng Crypto đang vượt 50% tổng vốn đầu
+                  tư theo giá mua. Hãy cân nhắc mức độ tập
+                  trung rủi ro.
+                </li>
+              )}
+
+            {sortedByPnL[0] && (
+              <li>
+                Giao dịch có lãi/lỗ cao nhất trong danh sách
+                theo dõi:{' '}
+                <strong className="text-blue-300">
+                  {sortedByPnL[0].assetname}
+                </strong>
+                {' '}với kết quả{' '}
+                <strong
+                  className={
+                    sortedByPnL[0].pnl >= 0
+                      ? 'text-green-400'
+                      : 'text-red-400'
+                  }
+                >
+                  {formatNumber(sortedByPnL[0].pnl)} đ
+                </strong>
+                .
+              </li>
+            )}
+
+            {netProfit < 0 && (
+              <li>
+                Tổng lãi/lỗ sau phí đang âm. Nên kiểm tra
+                những giao dịch gây thua lỗ lớn trước khi
+                tăng thêm tỷ trọng đầu tư.
+              </li>
+            )}
+
+            {gainers.length === 0 && losers.length === 0 && (
+              <li>
+                Chưa có giao dịch ghi nhận lãi hoặc lỗ.
+                Hãy kiểm tra giá mua, giá hiện tại và số
+                lượng của các tài sản.
+              </li>
+            )}
+
             <li>
-              Giao dịch lợi nhuận cao nhất: {sortedByPnL[0].assetname} với lãi khoảng{' '}
-              {formatNumber(
-                calculatePnL(
-                  sortedByPnL[0].buyprice,
-                  sortedByPnL[0].issold ? sortedByPnL[0].sellprice : sortedByPnL[0].currentprice,
-                  sortedByPnL[0].quantity
-                )
-              )} đ
+              Tổng phí giao dịch hiện được tính từ các cột
+              transactionfee và sellfee. Hãy bảo đảm hai
+              cột này sử dụng cùng đơn vị tiền tệ với lợi
+              nhuận.
             </li>
-          )}
-        </ul>
+
+          </ul>
+        )}
+
+        <p className="mt-4 border-t border-zinc-700 pt-3 text-xs text-gray-500">
+          Lưu ý: Đây là nhận xét tự động dựa trên dữ liệu
+          danh mục, không phải dự báo chắc chắn về thị trường.
+        </p>
       </div>
 
-      {/* Sửa giao dịch */}
+      {/* SỬA GIAO DỊCH */}
+
       {editingTx && (
         <EditTransactionForm
           initial={editingTx}
           onCancel={() => setEditingTx(null)}
           onSave={() => {
             setEditingTx(null)
-            fetchData()
+
+            // Tải lại đúng khoảng thời gian hiện tại.
+            if (
+              filterType !== 'Tùy chọn' &&
+              startDate &&
+              endDate
+            ) {
+              void fetchData(startDate, endDate)
+            } else if (startDate && endDate) {
+              void fetchData(startDate, endDate)
+            } else {
+              void fetchData()
+            }
           }}
         />
       )}
+
     </div>
   )
 }
+

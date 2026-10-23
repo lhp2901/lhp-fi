@@ -11,6 +11,7 @@ import EditTransactionForm from '@/components/portfolio/EditTransactionForm'
 import DashboardContent from '@/components/market-analysis/DashboardContent'
 import MarketMoodCard from '@/components/market-analysis/MarketMoodCard'
 import CryptoDashboardPage from '@/components/crypto/CryptoDashboardPage'
+import FootprintPage from './footprint/page'
 
 const quotes = [
   'Đừng bao giờ đặt tất cả trứng vào cùng một giỏ.',
@@ -26,7 +27,7 @@ const getQuoteColor = (hour: number): string => {
   return 'text-lime-300'                                    // khuya → xanh chanh nổi
 }
 
-type TabKey = 'dashboard' | 'market' | 'analysis' |  'crypto' | 'portfolio'
+type TabKey = 'dashboard' | 'market' | 'analysis' | 'footprint' | 'crypto' | 'portfolio'
 
 export default function HomePage() {
   const router = useRouter()
@@ -164,6 +165,7 @@ const getDayText = (day: number): string => {
         { key: 'dashboard', label: '📊 Dashboard' },
         { key: 'market', label: '🌏 Thị Trường' },
         { key: 'analysis', label: '📈 Cổ phiếu' },
+        { key: 'footprint', label: '🔥 Footprint Cổ phiếu' },
         {
           key: 'derivatives',
           label: '⚡ BOOKMAP VN30F1M',
@@ -215,6 +217,12 @@ const getDayText = (day: number): string => {
       {activeTab === 'analysis' && (
         <section className="mt-4">
           <AnalysisPage />
+        </section>
+      )}
+
+      {activeTab === 'footprint' && (
+        <section className="mt-4">
+          <FootprintPage />
         </section>
       )}
 
