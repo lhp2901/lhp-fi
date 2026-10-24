@@ -188,7 +188,7 @@ export default function HomePage() {
 
       {/* KHU VỰC NỘI DUNG TRANG CHỦ */}
       <section className="min-w-0">
-        <div className="mb-5">
+        {/*<div className="mb-5">
           <h1 className="text-xl font-bold tracking-wide text-white sm:text-2xl">
             📊 LHP-FI Dashboard
           </h1>
@@ -196,7 +196,7 @@ export default function HomePage() {
           <p className="mt-1 text-sm text-slate-400">
             Trung tâm theo dõi thị trường và quản lý tài chính của bạn.
           </p>
-        </div>
+        </div>*/}
 
         {/* Nội dung Dashboard */}
         <DashboardHome />
