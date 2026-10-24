@@ -12,6 +12,7 @@ import DashboardContent from '@/components/market-analysis/DashboardContent'
 import MarketMoodCard from '@/components/market-analysis/MarketMoodCard'
 import CryptoDashboardPage from '@/components/crypto/CryptoDashboardPage'
 import FootprintPage from './footprint/page'
+import SavingsPage from '@/app/(auth-required)/portfolio/savings/page'
 
 const quotes = [
   'Đừng bao giờ đặt tất cả trứng vào cùng một giỏ.',
@@ -27,7 +28,7 @@ const getQuoteColor = (hour: number): string => {
   return 'text-lime-300'                                    // khuya → xanh chanh nổi
 }
 
-type TabKey = 'dashboard' | 'market' | 'analysis' | 'footprint' | 'crypto' | 'portfolio'
+type TabKey = 'dashboard' | 'market' | 'analysis' | 'footprint' | 'crypto' | 'portfolio' | 'savings'
 
 export default function HomePage() {
   const router = useRouter()
@@ -159,46 +160,49 @@ const getDayText = (day: number): string => {
         </div>
       </div>
   
-    {/* 🔥 Tabs */}
-    <div className="flex gap-3 flex-wrap mb-4">
-      {[
-        { key: 'dashboard', label: '📊 Dashboard' },
-        { key: 'market', label: '🌏 Thị Trường' },
-        { key: 'analysis', label: '📈 Cổ phiếu' },
-        { key: 'footprint', label: '🔥 Footprint Cổ phiếu' },
-        {
-          key: 'derivatives',
-          label: '⚡ BOOKMAP VN30F1M',
-          href: 'https://vn30f1m.trunghsgs.edu.vn/',
-        },
-        { key: 'crypto', label: '💎 Crypto' },
-        { key: 'portfolio', label: '💼 Giao dịch' },
-      ].map((tab) => (
-        tab.href ? (
-          <a
-            key={tab.key}
-            href={tab.href}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="px-4 py-2 rounded-md text-sm font-medium border text-slate-200 hover:bg-white/10"
-          >
-            {tab.label}
-          </a>
-        ) : (
-          <button
-            key={tab.key}
-            onClick={() => setActiveTab(tab.key as TabKey)}
-            className={`px-4 py-2 rounded-md text-sm font-medium border ${
-              activeTab === tab.key
-                ? 'bg-indigo-600 text-white'
-                : 'text-slate-200 hover:bg-white/10'
-            }`}
-          >
-            {tab.label}
-          </button>
-        )
-      ))}
-    </div>
+    
+      {/* 🔥 Tabs */}
+      <div className="mb-4 flex flex-wrap gap-3">
+        {[
+          { key: 'dashboard', label: '📊 Dashboard' },
+          { key: 'market', label: '🌏 Thị Trường' },
+          { key: 'analysis', label: '📈 Cổ phiếu' },
+          { key: 'footprint', label: '🔥 Footprint Cổ phiếu' },
+          {
+            key: 'derivatives',
+            label: '⚡ BOOKMAP VN30F1M',
+            href: 'https://vn30f1m.trunghsgs.edu.vn/',
+          },
+          { key: 'crypto', label: '💎 Crypto' },
+          { key: 'portfolio', label: '💼 Giao dịch' },
+          { key: 'savings', label: '💰 Tiết kiệm' },
+        ].map((tab) =>
+          tab.href ? (
+            <a
+              key={tab.key}
+              href={tab.href}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="rounded-md border px-4 py-2 text-sm font-medium text-slate-200 hover:bg-white/10"
+            >
+              {tab.label}
+            </a>
+          ) : (
+            <button
+              key={tab.key}
+              type="button"
+              onClick={() => setActiveTab(tab.key as TabKey)}
+              className={`rounded-md border px-4 py-2 text-sm font-medium ${
+                activeTab === tab.key
+                  ? 'border-indigo-500 bg-indigo-600 text-white'
+                  : 'text-slate-200 hover:bg-white/10'
+              }`}
+            >
+              {tab.label}
+            </button>
+          )
+        )}
+      </div>
 
 
       {/* 💾 Nội dung từng tab */}
@@ -231,7 +235,7 @@ const getDayText = (day: number): string => {
           <CryptoDashboardPage />
         </section>
       )}
-
+      
       {activeTab === 'portfolio' && (
         <section className="space-y-6 mt-4">
           <div className="bg-white/5 border border-white/10 rounded-xl p-4">
@@ -276,6 +280,8 @@ const getDayText = (day: number): string => {
           </div>
         </section>
       )}
+      {activeTab === 'savings' && ( <section className="mt-4"> <SavingsPage /> </section> )}
+      
     </div>
   )
 }

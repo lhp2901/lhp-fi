@@ -1,0 +1,325 @@
+'use client'
+
+import { useState } from 'react'
+import type {
+SavingsDepositInput,
+SavingsTermUnit,
+SavingsPayoutMethod,
+} from '@/lib/savings/types'
+
+interface SavingsDepositFormProps {
+onSubmit: (data: SavingsDepositInput) => Promise<void>
+onCancel?: () => void
+}
+
+const initialForm = {
+bank_name: '',
+deposit_name: '',
+account_reference: '',
+currency: 'VND',
+principal: '',
+annual_interest_rate: '',
+start_date: new Date().toLocaleDateString('en-CA'),
+maturity_date: '',
+term_value: '12',
+term_unit: 'MONTHS' as SavingsTermUnit,
+interest_payout_method: 'MATURITY' as SavingsPayoutMethod,
+auto_renewal: false,
+renewal_type: 'PRINCIPAL_ONLY' as const,
+notes: '',
+}
+
+const formatMoneyInput = (value: string | number) => {
+  const digits = String(value ?? '').replace(/\D/g, '')
+
+  if (!digits) return ''
+
+  return Number(digits).toLocaleString('vi-VN')
+}
+
+export default function SavingsDepositForm({
+onSubmit,
+onCancel,
+}: SavingsDepositFormProps) {
+const [form, setForm] = useState(initialForm)
+const [saving, setSaving] = useState(false)
+const [error, setError] = useState('')
+
+async function handleSubmit(
+event: React.FormEvent<HTMLFormElement>
+) {
+event.preventDefault()
+setError('')
+
+const principal = Number(form.principal)
+const rate = Number(form.annual_interest_rate)
+const term = Number(form.term_value)
+
+if (!form.bank_name.trim() || !form.deposit_name.trim()) {
+  setError('Vui lòng nhập tên ngân hàng và tên khoản tiết kiệm.')
+  return
+}
+
+if (!Number.isFinite(principal) || principal <= 0) {
+  setError('Số tiền gửi phải lớn hơn 0.')
+  return
+}
+
+if (!Number.isFinite(rate) || rate < 0) {
+  setError('Lãi suất không hợp lệ.')
+  return
+}
+
+if (!Number.isInteger(term) || term <= 0) {
+  setError('Kỳ hạn phải là số nguyên dương.')
+  return
+}
+
+if (
+  !form.start_date ||
+  !form.maturity_date ||
+  form.maturity_date < form.start_date
+) {
+  setError('Ngày đáo hạn phải bằng hoặc sau ngày gửi.')
+  return
+}
+
+setSaving(true)
+
+try {
+  await onSubmit({
+    bank_name: form.bank_name.trim(),
+    deposit_name: form.deposit_name.trim(),
+    account_reference: form.account_reference.trim() || null,
+    currency: form.currency,
+    principal,
+    annual_interest_rate: rate,
+    start_date: form.start_date,
+    maturity_date: form.maturity_date,
+    term_value: term,
+    term_unit: form.term_unit,
+    interest_payout_method: form.interest_payout_method,
+    auto_renewal: form.auto_renewal,
+    renewal_type: form.renewal_type,
+    notes: form.notes.trim() || null,
+  })
+
+  setForm(initialForm)
+} catch (err) {
+  setError(
+    err instanceof Error
+      ? err.message
+      : 'Không thể lưu khoản tiết kiệm.'
+  )
+} finally {
+  setSaving(false)
+}
+
+}
+
+function update<K extends keyof typeof initialForm>(
+key: K,
+value: (typeof initialForm)[K]
+) {
+setForm((previous) => ({
+...previous,
+[key]: value,
+}))
+}
+
+const inputClass =
+'mt-1 w-full rounded-lg border border-zinc-700 bg-zinc-950 px-3 py-2 text-white outline-none focus'
+
+return (
+<form onSubmit={handleSubmit} className="space-y-5 rounded-xl border border-zinc-800 bg-zinc-900 p-5" >
+<h2 className="text-xl font-bold text-white">
+➕ Thêm khoản tiết kiệm
+</h2>
+
+  <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+    <label className="text-sm text-zinc-300">
+      Ngân hàng *
+      <input
+        required
+        value={form.bank_name}
+        onChange={(e) => update('bank_name', e.target.value)}
+        className={inputClass}
+        placeholder="VD: Vietcombank"
+      />
+    </label>
+
+    <label className="text-sm text-zinc-300">
+      Tên khoản tiết kiệm *
+      <input
+        required
+        value={form.deposit_name}
+        onChange={(e) => update('deposit_name', e.target.value)}
+        className={inputClass}
+        placeholder="VD: Tiết kiệm 12 tháng"
+      />
+    </label>
+  
+     
+    <label className="block text-sm text-zinc-300">
+    Số tiền gốc (VND) *
+    <input
+        type="text"
+        inputMode="numeric"
+        value={formatMoneyInput(form.principal)}
+        onChange={(e) => {
+        const digits = e.target.value.replace(/\D/g, '')
+
+        setForm((prev) => ({
+            ...prev,
+            principal: digits,
+        }))
+        }}
+        placeholder="Ví dụ: 1.000.000.000"
+        className="mt-1 w-full rounded-lg border border-zinc-700 bg-zinc-800 px-3 py-2 text-white"
+    />
+    </label>
+
+    <label className="text-sm text-zinc-300">
+      Lãi suất (%/năm) *
+      <input
+        required
+        type="number"
+        min="0"
+        step="0.0001"
+        value={form.annual_interest_rate}
+        onChange={(e) =>
+          update('annual_interest_rate', e.target.value)
+        }
+        className={inputClass}
+      />
+    </label>
+
+    <label className="text-sm text-zinc-300">
+      Ngày gửi *
+      <input
+        required
+        type="date"
+        value={form.start_date}
+        onChange={(e) => update('start_date', e.target.value)}
+        className={inputClass}
+      />
+    </label>
+
+    <label className="text-sm text-zinc-300">
+      Ngày đáo hạn *
+      <input
+        required
+        type="date"
+        value={form.maturity_date}
+        onChange={(e) => update('maturity_date', e.target.value)}
+        className={inputClass}
+      />
+    </label>
+
+    <label className="text-sm text-zinc-300">
+      Kỳ hạn
+      <input
+        required
+        type="number"
+        min="1"
+        step="1"
+        value={form.term_value}
+        onChange={(e) => update('term_value', e.target.value)}
+        className={inputClass}
+      />
+    </label>
+
+    <label className="text-sm text-zinc-300">
+      Đơn vị kỳ hạn
+      <select
+        value={form.term_unit}
+        onChange={(e) =>
+          update('term_unit', e.target.value as SavingsTermUnit)
+        }
+        className={inputClass}
+      >
+        <option value="DAYS">Ngày</option>
+        <option value="MONTHS">Tháng</option>
+        <option value="YEARS">Năm</option>
+      </select>
+    </label>
+
+    <label className="text-sm text-zinc-300">
+      Hình thức nhận lãi
+      <select
+        value={form.interest_payout_method}
+        onChange={(e) =>
+          update(
+            'interest_payout_method',
+            e.target.value as SavingsPayoutMethod
+          )
+        }
+        className={inputClass}
+      >
+        <option value="MONTHLY">Hằng tháng</option>
+        <option value="QUARTERLY">Hằng quý</option>
+        <option value="MATURITY">Cuối kỳ</option>
+      </select>
+    </label>
+
+    <label className="text-sm text-zinc-300">
+      Mã tham chiếu sổ tiết kiệm
+      <input
+        value={form.account_reference}
+        onChange={(e) =>
+          update('account_reference', e.target.value)
+        }
+        className={inputClass}
+        placeholder="Không bắt buộc"
+      />
+    </label>
+  </div>
+
+  <label className="flex items-center gap-2 text-sm text-zinc-300">
+    <input
+      type="checkbox"
+      checked={form.auto_renewal}
+      onChange={(e) => update('auto_renewal', e.target.checked)}
+    />
+    Có đăng ký tự động tái tục
+  </label>
+
+  <label className="block text-sm text-zinc-300">
+    Ghi chú
+    <textarea
+      value={form.notes}
+      onChange={(e) => update('notes', e.target.value)}
+      className={inputClass}
+      rows={3}
+    />
+  </label>
+
+  {error && (
+    <p className="rounded-lg bg-red-950 p-3 text-sm text-red-300">
+      {error}
+    </p>
+  )}
+
+  <div className="flex flex-wrap gap-3">
+    <button
+      type="submit"
+      disabled={saving}
+      className="rounded-lg bg-emerald-600 px-5 py-2 font-semibold text-white hover:bg-emerald-500 disabled:opacity-50"
+    >
+      {saving ? 'Đang lưu...' : 'Lưu khoản tiết kiệm'}
+    </button>
+
+    {onCancel && (
+      <button
+        type="button"
+        onClick={onCancel}
+        className="rounded-lg border border-zinc-700 px-5 py-2 text-zinc-300 hover:bg-zinc-800"
+      >
+        Hủy
+      </button>
+    )}
+  </div>
+</form>
+
+)
+}
