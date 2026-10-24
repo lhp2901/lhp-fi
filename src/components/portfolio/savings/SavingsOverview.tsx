@@ -83,9 +83,9 @@ export default function SavingsOverview({
 
   return (
     <section className="space-y-4">
-      <h2 className="text-lg font-bold text-white">
+      {/*<h2 className="text-lg font-bold text-white">
         📊 Tổng quan tiết kiệm
-      </h2>
+      </h2>*/}
 
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
         {cards.map((card) => (

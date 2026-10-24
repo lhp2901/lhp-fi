@@ -266,7 +266,7 @@ transaction.buyprice)
 const recentTransactions = transactions.slice(0, 5)
 
 return ( <main className="min-h-screen space-y-6 bg-zinc-950 p-4 text-white md:p-6"> <header className="flex flex-col justify-between gap-4 sm:flex-row sm:items-center"> <div> <p className="text-sm font-medium tracking-wide text-emerald-500">
-LHP-FI INVESTMENT </p>
+ </p>
 
 
       <h1 className="mt-2 text-3xl font-bold">

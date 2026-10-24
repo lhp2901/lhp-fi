@@ -497,7 +497,7 @@ export default function TransactionList({
   return (
     <section className="space-y-5 text-white">
       {/* TIÊU ĐỀ */}
-      <div className="flex flex-col justify-between gap-3 sm:flex-row sm:items-center">
+      {/*<div className="flex flex-col justify-between gap-3 sm:flex-row sm:items-center">
         <div>
           <h2 className="text-xl font-bold md:text-2xl">
             📋 Danh sách giao dịch
@@ -516,7 +516,7 @@ export default function TransactionList({
         >
           {refreshing ? 'Đang tải...' : '↻ Làm mới'}
         </button>
-      </div>
+      </div>*/}
 
       {/* THÔNG BÁO */}
       {error && (
