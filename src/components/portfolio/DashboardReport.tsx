@@ -1,873 +1,686 @@
 'use client'
 
-import { useCallback, useEffect, useMemo, useState } from 'react'
+import {
+useCallback,
+useEffect,
+useState,
+type ReactNode,
+} from 'react'
 
 import { createBrowserClient } from '@supabase/ssr'
 
 import {
-calculatePnL,
-formatNumber,
-} from '@/lib/utils'
-
-import {
+TrendingUp,
+TrendingDown,
+Wallet,
 PieChart,
-Pie,
-Cell,
-Tooltip,
-ResponsiveContainer,
-BarChart,
-Bar,
-XAxis,
-YAxis,
-CartesianGrid,
-} from 'recharts'
+CircleDollarSign,
+Activity,
+RefreshCw,
+AlertCircle,
+CheckCircle2,
+} from 'lucide-react'
 
-import EditTransactionForm from './EditTransactionForm'
-
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
-const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
-
-const supabase =
-supabaseUrl && supabaseAnonKey
-? createBrowserClient(supabaseUrl, supabaseAnonKey)
-: null
-
-const COLORS = ['#FFBB28', '#00C49F', '#8884d8', '#FF8042', '#0088FE']
-
-type Transaction = {
-  id: string | number
-  assetname: string
-  category: string
-  buyprice: number | string | null
-  currentprice: number | string | null
-  sellprice: number | string | null
-  quantity: number | string | null
-  transactionfee?: number | string | null
-  sellfee?: number | string | null
-  issold: boolean
-  created_at?: string
-  [key: string]: unknown
+type PortfolioTransaction = {
+id: string
+user_id: string
+assetname: string
+category: string | null
+quantity: number
+buyprice: number
+currentprice: number | null
+transactionfee: number | null
+sellprice: number | null
+sellfee: number | null
+issold: boolean
+buydate: string | null
 }
 
-type CategoryItem = {
-  name: string
-  value: number
+type PortfolioStats = {
+totalAssets: number
+totalPositions: number
+totalBuyValue: number
+totalCurrentValue: number
+totalUnrealizedPnL: number
+totalRealizedPnL: number
+totalFees: number
+winningPositions: number
+losingPositions: number
+profitableRate: number
 }
 
-type ChartTransaction = Transaction & {
-  pnl: number
+type PortfolioRow = {
+id: string | number
+user_id: string
+assetname: string | null
+category: string | null
+quantity: number | string | null
+buyprice: number | string | null
+currentprice: number | string | null
+transactionfee: number | string | null
+sellprice: number | string | null
+sellfee: number | string | null
+issold: boolean | null
+buydate: string | null
 }
 
-// =====================================================
-// HÀM HỖ TRỢ
-// =====================================================
+const EMPTY_STATS: PortfolioStats = {
+totalAssets: 0,
+totalPositions: 0,
+totalBuyValue: 0,
+totalCurrentValue: 0,
+totalUnrealizedPnL: 0,
+totalRealizedPnL: 0,
+totalFees: 0,
+winningPositions: 0,
+losingPositions: 0,
+profitableRate: 0,
+}
 
 function toNumber(value: unknown): number {
-  if (value === null || value === undefined || value === '') {
-    return 0
-  }
-
-  const numberValue = Number(value)
-
-  return Number.isFinite(numberValue) ? numberValue : 0
+if (value === null || value === undefined || value === '') {
+return 0
 }
 
-function getTransactionPrice(tx: Transaction): number {
-  return toNumber(tx.issold ? tx.sellprice : tx.currentprice)
+const result = Number(value)
+
+return Number.isFinite(result) ? result : 0
 }
 
-function getTransactionPnL(tx: Transaction): number {
-  return toNumber(
-    calculatePnL(
-      toNumber(tx.buyprice),
-      getTransactionPrice(tx),
-      toNumber(tx.quantity)
-    )
-  )
+function formatMoney(value: number): string {
+return new Intl.NumberFormat('vi-VN', {
+maximumFractionDigits: 0,
+}).format(value)
 }
 
-function getLocalDateString(date: Date): string {
-  const year = date.getFullYear()
-  const month = String(date.getMonth() + 1).padStart(2, '0')
-  const day = String(date.getDate()).padStart(2, '0')
-
-  return `${year}-${month}-${day}`
+function formatPercent(value: number): string {
+return `${value >= 0 ? '+' : ''}${value.toFixed(2)}%`
 }
 
-function getStartDate(filterType: string, today: Date): Date | null {
-  const from = new Date(today)
-
-  switch (filterType) {
-    case 'Ngày':
-      from.setDate(from.getDate() - 1)
-      return from
-
-    case 'Tuần':
-      from.setDate(from.getDate() - 7)
-      return from
-
-    case 'Tháng':
-      from.setMonth(from.getMonth() - 1)
-      return from
-
-    default:
-      return null
-  }
+function isRecord(value: unknown): value is Record<string, unknown> {
+return typeof value === 'object' && value !== null && !Array.isArray(value)
 }
 
-// =====================================================
-// COMPONENT
-// =====================================================
+function normalizeTransaction(value: unknown): PortfolioTransaction {
+if (!isRecord(value)) {
+throw new Error('Một bản ghi giao dịch không phải đối tượng hợp lệ.')
+}
 
-export default function DashboardReport() {
-  const [transactions, setTransactions] = useState<Transaction[]>([])
-  const [editingTx, setEditingTx] = useState<Transaction | null>(null)
+if (
+!('id' in value) ||
+!('user_id' in value) ||
+!('assetname' in value) ||
+!('quantity' in value) ||
+!('buyprice' in value)
+) {
+throw new Error(
+'Bản ghi giao dịch thiếu trường bắt buộc. Hãy kiểm tra cấu trúc bảng portfolio_transactions.',
+)
+}
 
-  const [filterType, setFilterType] = useState('Tháng')
-  const [startDate, setStartDate] = useState('')
-  const [endDate, setEndDate] = useState('')
+const row = value as unknown as PortfolioRow
 
-  const [loading, setLoading] = useState(false)
-  const [errorMessage, setErrorMessage] = useState('')
-  const [hasLoaded, setHasLoaded] = useState(false)
+return {
+id: String(row.id),
+user_id: String(row.user_id),
+assetname: String(row.assetname ?? ''),
+category: row.category == null ? null : String(row.category),
+quantity: toNumber(row.quantity),
+buyprice: toNumber(row.buyprice),
+currentprice:
+row.currentprice == null ? null : toNumber(row.currentprice),
+transactionfee:
+row.transactionfee == null ? null : toNumber(row.transactionfee),
+sellprice: row.sellprice == null ? null : toNumber(row.sellprice),
+sellfee: row.sellfee == null ? null : toNumber(row.sellfee),
+issold: row.issold === true,
+buydate: row.buydate == null ? null : String(row.buydate),
+}
+}
 
-  // ===================================================
-  // TẢI DỮ LIỆU
-  // ===================================================
+function calculateStats(
+transactions: PortfolioTransaction[],
+): PortfolioStats {
+const activePositions = transactions.filter(
+(item) => !item.issold,
+)
 
-  const fetchData = useCallback(
-    async (from?: string, to?: string) => {
-      if (!supabase) {
-        setErrorMessage(
-          'Thiếu NEXT_PUBLIC_SUPABASE_URL hoặc NEXT_PUBLIC_SUPABASE_ANON_KEY.'
-        )
-        setTransactions([])
-        setHasLoaded(true)
-        return
-      }
+const soldPositions = transactions.filter(
+(item) => item.issold,
+)
 
-      if (from && to && from > to) {
-        setErrorMessage('Ngày bắt đầu không được lớn hơn ngày kết thúc.')
-        return
-      }
+const totalBuyValue = activePositions.reduce(
+(sum, item) => sum + item.quantity * item.buyprice,
+0,
+)
 
-      setLoading(true)
-      setErrorMessage('')
+const totalCurrentValue = activePositions.reduce(
+(sum, item) =>
+sum +
+item.quantity *
+(item.currentprice ?? item.buyprice),
+0,
+)
 
-      try {
-        let query = supabase
-          .from('portfolio_transactions')
-          .select('*')
-          .order('created_at', { ascending: false })
+const totalUnrealizedPnL = activePositions.reduce(
+(sum, item) => {
+const currentPrice = item.currentprice ?? item.buyprice
 
-        // Lọc từ đầu ngày bắt đầu.
-        if (from) {
-          query = query.gte(
-            'created_at',
-            `${from}T00:00:00.000Z`
-          )
-        }
-
-        // Lấy đến hết ngày kết thúc:
-        // nhỏ hơn thời điểm đầu ngày kế tiếp.
-        if (to) {
-          const [year, month, day] = to.split('-').map(Number)
-
-          const nextDay = new Date(
-            Date.UTC(year, month - 1, day + 1)
-          )
-
-          query = query.lt(
-            'created_at',
-            nextDay.toISOString()
-          )
-        }
-
-        const { data, error } = await query
-
-        if (error) {
-          console.error('Lỗi Supabase khi tải báo cáo:', error)
-
-          setErrorMessage(
-            `Không thể tải dữ liệu: ${error.message}`
-          )
-
-          setTransactions([])
-          return
-        }
-
-        setTransactions((data ?? []) as Transaction[])
-      } catch (error) {
-        console.error('Lỗi tải báo cáo:', error)
-
-        setErrorMessage(
-          error instanceof Error
-            ? error.message
-            : 'Đã xảy ra lỗi không xác định khi tải báo cáo.'
-        )
-
-        setTransactions([])
-      } finally {
-        setLoading(false)
-        setHasLoaded(true)
-      }
-    },
-    []
-  )
-
-  // ===================================================
-  // TỰ ĐỘNG LỌC THEO NGÀY / TUẦN / THÁNG
-  // ===================================================
-
-  useEffect(() => {
-    if (filterType === 'Tùy chọn') {
-      return
-    }
-
-    const today = new Date()
-    const from = getStartDate(filterType, today)
-
-    if (!from) {
-      return
-    }
-
-    const fromDate = getLocalDateString(from)
-    const toDate = getLocalDateString(today)
-
-    setStartDate(fromDate)
-    setEndDate(toDate)
-
-    void fetchData(fromDate, toDate)
-  }, [filterType, fetchData])
-
-  // ===================================================
-  // TÍNH TOÁN BÁO CÁO
-  // ===================================================
-
-  const report = useMemo(() => {
-    const totalInvested = transactions.reduce((sum, tx) => {
-      return (
-        sum +
-        toNumber(tx.quantity) *
-          toNumber(tx.buyprice)
-      )
-    }, 0)
-
-    const totalFee = transactions.reduce((sum, tx) => {
-      return (
-        sum +
-        toNumber(tx.transactionfee) +
-        toNumber(tx.sellfee)
-      )
-    }, 0)
-
-    const totalPnL = transactions.reduce((sum, tx) => {
-      return sum + getTransactionPnL(tx)
-    }, 0)
-
-    const netProfit = totalPnL - totalFee
-
-    const gainers = transactions.filter(
-      (tx) => getTransactionPnL(tx) > 0
-    )
-
-    const losers = transactions.filter(
-      (tx) => getTransactionPnL(tx) < 0
-    )
-
-    const categoryMap = transactions.reduce<
-      Record<string, number>
-    >((acc, tx) => {
-      const category = tx.category || 'Chưa phân loại'
-
-      acc[category] =
-        (acc[category] || 0) +
-        toNumber(tx.quantity) *
-          toNumber(tx.buyprice)
-
-      return acc
-    }, {})
-
-    const categoryDist: CategoryItem[] = Object.entries(
-      categoryMap
-    ).map(([name, value]) => ({
-      name,
-      value,
-    }))
-
-    const sortedByPnL: ChartTransaction[] = transactions
-      .map((tx) => ({
-        ...tx,
-        pnl: getTransactionPnL(tx),
-      }))
-      .sort((a, b) => b.pnl - a.pnl)
-
-    return {
-      totalInvested,
-      totalFee,
-      totalPnL,
-      netProfit,
-      gainers,
-      losers,
-      categoryDist,
-      sortedByPnL,
-    }
-  }, [transactions])
-
-  const {
-    totalInvested,
-    totalFee,
-    totalPnL,
-    netProfit,
-    gainers,
-    losers,
-    categoryDist,
-    sortedByPnL,
-  } = report
-
-  // ===================================================
-  // LỌC THỦ CÔNG
-  // ===================================================
-
-  const handleFilter = () => {
-    if (!startDate || !endDate) {
-      setErrorMessage(
-        'Vui lòng chọn đầy đủ ngày bắt đầu và ngày kết thúc.'
-      )
-      return
-    }
-
-    void fetchData(startDate, endDate)
-  }
-
-  // ===================================================
-  // GIAO DIỆN
-  // ===================================================
 
   return (
-    <div className="mx-auto max-w-7xl space-y-6 p-4 text-white sm:p-6">
-
-      {/* TIÊU ĐỀ */}
-
-      <div>
-        <h1 className="text-2xl font-bold sm:text-3xl">
-          📊 Báo Cáo Danh Mục Đầu Tư
-        </h1>
-
-        <p className="mt-1 text-sm text-gray-400">
-          Theo dõi hiệu quả giao dịch, lợi nhuận và phân bổ
-          danh mục.
-        </p>
-      </div>
-
-      {/* BỘ LỌC */}
-
-      <div className="rounded-xl bg-zinc-900 p-4">
-        <h2 className="mb-3 text-lg font-semibold">
-          📅 Bộ lọc thời gian
-        </h2>
-
-        <div className="flex flex-wrap items-center gap-3">
-
-          <label htmlFor="filterType" className="text-sm">
-            Lọc theo:
-          </label>
-
-          <select
-            id="filterType"
-            className="rounded bg-zinc-800 p-2 text-white"
-            value={filterType}
-            onChange={(e) => setFilterType(e.target.value)}
-          >
-            <option value="Ngày">Ngày</option>
-            <option value="Tuần">Tuần</option>
-            <option value="Tháng">Tháng</option>
-            <option value="Tùy chọn">Tùy chọn</option>
-          </select>
-
-          <input
-            type="date"
-            aria-label="Ngày bắt đầu"
-            value={startDate}
-            onChange={(e) => setStartDate(e.target.value)}
-            className="rounded bg-zinc-800 p-2 text-white"
-          />
-
-          <span className="text-gray-400">Đến</span>
-
-          <input
-            type="date"
-            aria-label="Ngày kết thúc"
-            value={endDate}
-            onChange={(e) => setEndDate(e.target.value)}
-            className="rounded bg-zinc-800 p-2 text-white"
-          />
-
-          <button
-            type="button"
-            onClick={handleFilter}
-            disabled={loading}
-            className="rounded bg-blue-600 px-4 py-2 font-medium transition hover:bg-blue-500 disabled:cursor-not-allowed disabled:opacity-50"
-          >
-            {loading ? 'Đang tải...' : 'Lọc báo cáo'}
-          </button>
-
-          <button
-            type="button"
-            onClick={() => {
-              setFilterType('Tùy chọn')
-              setStartDate('')
-              setEndDate('')
-              void fetchData()
-            }}
-            disabled={loading}
-            className="rounded bg-zinc-700 px-4 py-2 transition hover:bg-zinc-600 disabled:opacity-50"
-          >
-            Toàn bộ lịch sử
-          </button>
-
-        </div>
-
-        {loading && (
-          <div className="mt-4 rounded-lg bg-blue-950/50 p-3 text-sm text-blue-300">
-            ⏳ Đang tải dữ liệu báo cáo...
-          </div>
-        )}
-
-        {errorMessage && (
-          <div
-            role="alert"
-            className="mt-4 rounded-lg border border-red-800 bg-red-950/40 p-3 text-sm text-red-300"
-          >
-            ❌ {errorMessage}
-          </div>
-        )}
-
-        {!loading && !errorMessage && hasLoaded && (
-          <p className="mt-3 text-sm text-gray-400">
-            Đã tải {transactions.length} giao dịch.
-          </p>
-        )}
-      </div>
-
-      {/* TỔNG QUAN */}
-
-      <div className="rounded-xl bg-zinc-900 p-4">
-        <h2 className="mb-4 text-xl font-bold">
-          🧠 Tổng Quan Danh Mục
-        </h2>
-
-        <div className="grid grid-cols-1 gap-4 text-sm sm:grid-cols-2 lg:grid-cols-3">
-
-          <div className="rounded-lg bg-zinc-800/70 p-3">
-            <p className="text-gray-400">
-              💼 Tổng vốn đầu tư
-            </p>
-
-            <p className="mt-1 text-lg font-semibold text-yellow-400">
-              {formatNumber(totalInvested)} đ
-            </p>
-          </div>
-
-          <div className="rounded-lg bg-zinc-800/70 p-3">
-            <p className="text-gray-400">
-              📈 Giao dịch lãi
-            </p>
-
-            <p className="mt-1 text-lg font-semibold text-green-400">
-              {gainers.length}
-            </p>
-          </div>
-
-          <div className="rounded-lg bg-zinc-800/70 p-3">
-            <p className="text-gray-400">
-              📉 Giao dịch lỗ
-            </p>
-
-            <p className="mt-1 text-lg font-semibold text-red-400">
-              {losers.length}
-            </p>
-          </div>
-
-          <div className="rounded-lg bg-zinc-800/70 p-3">
-            <p className="text-gray-400">
-              💰 Lãi/lỗ sau phí
-            </p>
-
-            <p
-              className={`mt-1 text-lg font-semibold ${
-                netProfit >= 0
-                  ? 'text-green-400'
-                  : 'text-red-400'
-              }`}
-            >
-              {formatNumber(netProfit)} đ
-            </p>
-          </div>
-
-          <div className="rounded-lg bg-zinc-800/70 p-3">
-            <p className="text-gray-400">
-              💸 Tổng phí giao dịch
-            </p>
-
-            <p className="mt-1 text-lg font-semibold text-orange-400">
-              {formatNumber(totalFee)} đ
-            </p>
-          </div>
-
-          <div className="rounded-lg bg-zinc-800/70 p-3">
-            <p className="text-gray-400">
-              🗂 Tổng giao dịch
-            </p>
-
-            <p className="mt-1 text-lg font-semibold text-blue-400">
-              {transactions.length}
-            </p>
-          </div>
-
-        </div>
-      </div>
-
-      {/* BIỂU ĐỒ */}
-
-      <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
-
-        {/* PHÂN BỔ DANH MỤC */}
-
-        <div className="min-w-0 rounded-xl bg-zinc-900 p-4">
-          <h2 className="mb-4 text-lg font-bold">
-            📊 Phân Bổ Danh Mục
-          </h2>
-
-          {categoryDist.length > 0 ? (
-            <ResponsiveContainer width="100%" height={280}>
-              <PieChart>
-                <Pie
-                  data={categoryDist}
-                  dataKey="value"
-                  nameKey="name"
-                  cx="50%"
-                  cy="50%"
-                  outerRadius={95}
-                  label
-                >
-                  {categoryDist.map((entry, index) => (
-                    <Cell
-                      key={`category-${entry.name}-${index}`}
-                      fill={COLORS[index % COLORS.length]}
-                    />
-                  ))}
-                </Pie>
-
-                <Tooltip
-                  formatter={(value) => formatNumber(Number(value ?? 0))}
-                  contentStyle={{
-                    backgroundColor: '#18181b',
-                    border: '1px solid #3f3f46',
-                    borderRadius: '8px',
-                    color: '#fff',
-                  }}
-                />
-              </PieChart>
-            </ResponsiveContainer>
-          ) : (
-            <div className="flex h-[280px] items-center justify-center text-sm text-gray-500">
-              {loading
-                ? 'Đang tải dữ liệu...'
-                : 'Chưa có dữ liệu để hiển thị biểu đồ.'}
-            </div>
-          )}
-        </div>
-
-        {/* TOP 5 GIAO DỊCH */}
-
-        <div className="min-w-0 rounded-xl bg-zinc-900 p-4">
-          <h2 className="mb-4 text-lg font-bold">
-            🔍 Top 5 Giao Dịch Theo Lãi/Lỗ
-          </h2>
-
-          {sortedByPnL.length > 0 ? (
-            <ResponsiveContainer width="100%" height={280}>
-              <BarChart
-                data={sortedByPnL.slice(0, 5)}
-                margin={{
-                  top: 10,
-                  right: 10,
-                  left: 10,
-                  bottom: 5,
-                }}
-              >
-                <CartesianGrid
-                  strokeDasharray="3 3"
-                  stroke="#3f3f46"
-                />
-
-                <XAxis
-                  dataKey="assetname"
-                  stroke="#a1a1aa"
-                  tick={{ fontSize: 12 }}
-                />
-
-                <YAxis
-                  stroke="#a1a1aa"
-                  tick={{ fontSize: 11 }}
-                  tickFormatter={(value) =>
-                    new Intl.NumberFormat('vi-VN', {
-                      notation: 'compact',
-                      maximumFractionDigits: 1,
-                    }).format(value)
-                  }
-                />
-
-                <Tooltip
-                  formatter={(value) => formatNumber(Number(value ?? 0))}
-                  contentStyle={{
-                    backgroundColor: '#18181b',
-                    border: '1px solid #3f3f46',
-                    borderRadius: '8px',
-                    color: '#fff',
-                  }}
-                />
-
-                <Bar
-                  dataKey="pnl"
-                  name="Lãi/lỗ"
-                  radius={[4, 4, 0, 0]}
-                  fill="#8884d8"
-                />
-              </BarChart>
-            </ResponsiveContainer>
-          ) : (
-            <div className="flex h-[280px] items-center justify-center text-sm text-gray-500">
-              {loading
-                ? 'Đang tải dữ liệu...'
-                : 'Chưa có giao dịch để hiển thị.'}
-            </div>
-          )}
-        </div>
-
-      </div>
-
-      {/* DANH SÁCH GIAO DỊCH */}
-
-      <div className="overflow-x-auto rounded-xl bg-zinc-900 p-4">
-        <h2 className="mb-4 text-xl font-bold">
-          📋 Danh Sách Giao Dịch
-        </h2>
-
-        <table className="min-w-full text-left text-sm text-white">
-          <thead>
-            <tr className="border-b border-gray-700 text-gray-300">
-              <th className="whitespace-nowrap p-3">Mã</th>
-              <th className="whitespace-nowrap p-3">Danh mục</th>
-              <th className="whitespace-nowrap p-3">Giá mua</th>
-              <th className="whitespace-nowrap p-3">Giá hiện tại/bán</th>
-              <th className="whitespace-nowrap p-3">Số lượng</th>
-              <th className="whitespace-nowrap p-3">Lãi/lỗ</th>
-              <th className="whitespace-nowrap p-3">Trạng thái</th>
-              <th className="whitespace-nowrap p-3">Ghi chú</th>
-              <th className="whitespace-nowrap p-3">Thao tác</th>
-            </tr>
-          </thead>
-
-          <tbody>
-            {transactions.map((tx) => {
-              const pnl = getTransactionPnL(tx)
-              const isProfit = pnl >= 0
-
-              return (
-                <tr
-                  key={tx.id}
-                  className="border-b border-gray-800 transition hover:bg-zinc-800/60"
-                >
-                  <td className="whitespace-nowrap p-3 font-medium">
-                    {tx.assetname || 'N/A'}
-                  </td>
-
-                  <td className="whitespace-nowrap p-3">
-                    {tx.category || 'Chưa phân loại'}
-                  </td>
-
-                  <td className="whitespace-nowrap p-3">
-                    {formatNumber(toNumber(tx.buyprice))} đ
-                  </td>
-
-                  <td className="whitespace-nowrap p-3">
-                    {formatNumber(getTransactionPrice(tx))} đ
-                  </td>
-
-                  <td className="whitespace-nowrap p-3">
-                    {formatNumber(toNumber(tx.quantity))}
-                  </td>
-
-                  <td
-                    className={`whitespace-nowrap p-3 font-medium ${
-                      isProfit
-                        ? 'text-green-400'
-                        : 'text-red-400'
-                    }`}
-                  >
-                    {formatNumber(pnl)} đ
-                  </td>
-
-                  <td className="whitespace-nowrap p-3">
-                    {tx.issold
-                      ? '✅ Đã bán'
-                      : '🕒 Nắm giữ'}
-                  </td>
-
-                  {/* Ghi chú */}
-
-                  <td className="max-w-xs p-3"> 
-                  <div className="break-words text-orange-400" title={ typeof tx.note === 'string' ? tx.note : tx.note != null ? String(tx.note) : '' } > 📝{' '} {typeof tx.note === 'string' ? tx.note || '—' : tx.note != null ? String(tx.note) : '—'} 
-                  </div> 
-                  </td>
-                          
-                  <td className="whitespace-nowrap p-3">
-                    <button
-                      type="button"
-                      onClick={() => setEditingTx(tx)}
-                      className="text-blue-400 hover:text-blue-300 hover:underline"
-                    >
-                      ✏️ Sửa
-                    </button>
-                  </td>
-                </tr>
-              )
-            })}
-
-            {transactions.length === 0 && (
-              <tr>
-                <td
-                  colSpan={8}
-                  className="p-8 text-center text-gray-400"
-                >
-                  {loading
-                    ? 'Đang tải dữ liệu giao dịch...'
-                    : errorMessage
-                      ? 'Không thể tải danh sách giao dịch.'
-                      : 'Không có giao dịch trong khoảng thời gian đã chọn.'}
-                </td>
-              </tr>
-            )}
-          </tbody>
-        </table>
-      </div>
-
-      {/* GỢI Ý AI */}
-
-      <div className="rounded-xl bg-zinc-900 p-4">
-        <h2 className="mb-4 text-xl font-bold">
-          💡 Gợi Ý AI
-        </h2>
-
-        {transactions.length === 0 ? (
-          <p className="text-sm text-gray-400">
-            Chưa có đủ dữ liệu giao dịch để đưa ra nhận xét.
-          </p>
-        ) : (
-          <ul className="list-inside list-disc space-y-2 text-sm text-gray-300">
-
-            {losers.length > gainers.length && (
-              <li>
-                Số giao dịch lỗ đang nhiều hơn giao dịch lãi.
-                Hãy rà soát điểm mua, điểm bán và kỷ luật quản
-                trị rủi ro.
-              </li>
-            )}
-
-            {totalInvested > 0 &&
-              categoryDist.some(
-                (category) =>
-                  category.name === 'Crypto' &&
-                  category.value / totalInvested > 0.5
-              ) && (
-                <li>
-                  Tỷ trọng Crypto đang vượt 50% tổng vốn đầu
-                  tư theo giá mua. Hãy cân nhắc mức độ tập
-                  trung rủi ro.
-                </li>
-              )}
-
-            {sortedByPnL[0] && (
-              <li>
-                Giao dịch có lãi/lỗ cao nhất trong danh sách
-                theo dõi:{' '}
-                <strong className="text-blue-300">
-                  {sortedByPnL[0].assetname}
-                </strong>
-                {' '}với kết quả{' '}
-                <strong
-                  className={
-                    sortedByPnL[0].pnl >= 0
-                      ? 'text-green-400'
-                      : 'text-red-400'
-                  }
-                >
-                  {formatNumber(sortedByPnL[0].pnl)} đ
-                </strong>
-                .
-              </li>
-            )}
-
-            {netProfit < 0 && (
-              <li>
-                Tổng lãi/lỗ sau phí đang âm. Nên kiểm tra
-                những giao dịch gây thua lỗ lớn trước khi
-                tăng thêm tỷ trọng đầu tư.
-              </li>
-            )}
-
-            {gainers.length === 0 && losers.length === 0 && (
-              <li>
-                Chưa có giao dịch ghi nhận lãi hoặc lỗ.
-                Hãy kiểm tra giá mua, giá hiện tại và số
-                lượng của các tài sản.
-              </li>
-            )}
-
-            <li>
-              Tổng phí giao dịch hiện được tính từ các cột
-              transactionfee và sellfee. Hãy bảo đảm hai
-              cột này sử dụng cùng đơn vị tiền tệ với lợi
-              nhuận.
-            </li>
-
-          </ul>
-        )}
-
-        <p className="mt-4 border-t border-zinc-700 pt-3 text-xs text-gray-500">
-          Lưu ý: Đây là nhận xét tự động dựa trên dữ liệu
-          danh mục, không phải dự báo chắc chắn về thị trường.
-        </p>
-      </div>
-
-      {/* SỬA GIAO DỊCH */}
-
-      {editingTx && (
-        <EditTransactionForm
-          initial={editingTx}
-          onCancel={() => setEditingTx(null)}
-          onSave={() => {
-            setEditingTx(null)
-
-            // Tải lại đúng khoảng thời gian hiện tại.
-            if (
-              filterType !== 'Tùy chọn' &&
-              startDate &&
-              endDate
-            ) {
-              void fetchData(startDate, endDate)
-            } else if (startDate && endDate) {
-              void fetchData(startDate, endDate)
-            } else {
-              void fetchData()
-            }
-          }}
-        />
-      )}
-
-    </div>
+    sum +
+    (currentPrice - item.buyprice) * item.quantity -
+    (item.transactionfee ?? 0)
   )
+},
+0,
+
+
+)
+
+const totalRealizedPnL = soldPositions.reduce(
+(sum, item) => {
+const sellPrice = item.sellprice ?? 0
+
+
+  return (
+    sum +
+    (sellPrice - item.buyprice) * item.quantity -
+    (item.transactionfee ?? 0) -
+    (item.sellfee ?? 0)
+  )
+},
+0,
+
+
+)
+
+const totalFees = transactions.reduce(
+(sum, item) =>
+sum +
+(item.transactionfee ?? 0) +
+(item.sellfee ?? 0),
+0,
+)
+
+const winningPositions = activePositions.filter(
+(item) =>
+(item.currentprice ?? item.buyprice) > item.buyprice,
+).length
+
+const losingPositions = activePositions.filter(
+(item) =>
+(item.currentprice ?? item.buyprice) < item.buyprice,
+).length
+
+const totalPositions = activePositions.length
+
+const profitableRate =
+totalPositions > 0
+? (winningPositions / totalPositions) * 100
+: 0
+
+const uniqueAssets = new Set(
+activePositions.map(
+(item) => item.assetname.trim().toUpperCase(),
+).filter(Boolean),
+)
+
+return {
+totalAssets: uniqueAssets.size,
+totalPositions,
+totalBuyValue,
+totalCurrentValue,
+totalUnrealizedPnL,
+totalRealizedPnL,
+totalFees,
+winningPositions,
+losingPositions,
+profitableRate,
+}
 }
 
+function StatCard({
+title,
+value,
+subtitle,
+icon,
+positive,
+negative,
+}: {
+title: string
+value: string
+subtitle?: string
+icon: ReactNode
+positive?: boolean
+negative?: boolean
+}) {
+const valueColor = positive
+? 'text-emerald-600 dark:text-emerald-400'
+: negative
+? 'text-red-600 dark:text-red-400'
+: 'text-gray-900 dark:text-white'
+
+return ( <div className="rounded-2xl border border-gray-200 bg-white p-5 shadow-sm transition hover:shadow-md dark:border-gray-700 dark:bg-gray-900"> <div className="flex items-start justify-between gap-3"> <div className="min-w-0"> <p className="text-sm font-medium text-gray-500 dark:text-gray-400">
+{title} </p>
+
+
+      <p className={`mt-2 break-words text-xl font-bold ${valueColor}`}>
+        {value}
+      </p>
+
+      {subtitle && (
+        <p className="mt-2 text-xs text-gray-500 dark:text-gray-400">
+          {subtitle}
+        </p>
+      )}
+    </div>
+
+    <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-blue-50 text-blue-600 dark:bg-blue-950 dark:text-blue-400">
+      {icon}
+    </div>
+  </div>
+</div>
+
+
+)
+}
+
+export default function DashboardReport() {
+const [transactions, setTransactions] = useState<PortfolioTransaction[]>([])
+const [stats, setStats] = useState<PortfolioStats>(EMPTY_STATS)
+const [loading, setLoading] = useState(true)
+const [refreshing, setRefreshing] = useState(false)
+const [error, setError] = useState('')
+
+const loadReport = useCallback(async (isRefresh = false) => {
+if (isRefresh) {
+setRefreshing(true)
+} else {
+setLoading(true)
+}
+
+
+setError('')
+
+try {
+  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
+  const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
+
+  if (!supabaseUrl || !supabaseAnonKey) {
+    throw new Error(
+      'Thiếu NEXT_PUBLIC_SUPABASE_URL hoặc NEXT_PUBLIC_SUPABASE_ANON_KEY trong file .env.local.',
+    )
+  }
+
+  /*
+   * Khởi tạo client không gắn Database generic.
+   * Điều này tránh kiểu GenericStringError xuất phát
+   * từ một khai báo Database không khớp schema thực tế.
+   */
+  const supabase = createBrowserClient(supabaseUrl, supabaseAnonKey)
+
+  const {
+    data: { user },
+    error: authError,
+  } = await supabase.auth.getUser()
+
+  if (authError) {
+    throw authError
+  }
+
+  if (!user) {
+    setTransactions([])
+    setStats(EMPTY_STATS)
+    setError('Vui lòng đăng nhập để xem báo cáo danh mục.')
+    return
+  }
+
+  /*
+   * Đặt tên bảng và danh sách cột riêng biệt để dễ kiểm tra.
+   */
+  const tableName = 'portfolio_transactions'
+
+  const columns =
+    'id,user_id,assetname,category,quantity,buyprice,currentprice,transactionfee,sellprice,sellfee,issold,buydate'
+
+  const { data, error: queryError } = await supabase
+    .from(tableName)
+    .select(columns)
+    .eq('user_id', user.id)
+    .order('buydate', { ascending: false })
+
+  if (queryError) {
+    throw queryError
+  }
+
+  /*
+   * Chuẩn hóa từng bản ghi từ dữ liệu chưa xác thực.
+   * Không ép trực tiếp data thành PortfolioTransaction[].
+   */
+  const rows: PortfolioTransaction[] = (data ?? []).map(
+    (item: unknown) => normalizeTransaction(item),
+  )
+
+  setTransactions(rows)
+  setStats(calculateStats(rows))
+} catch (err: unknown) {
+  console.error('DashboardReport error:', err)
+
+  setTransactions([])
+  setStats(EMPTY_STATS)
+
+  setError(
+    err instanceof Error
+      ? err.message
+      : 'Không thể tải báo cáo danh mục đầu tư.',
+  )
+} finally {
+  setLoading(false)
+  setRefreshing(false)
+}
+
+
+}, [])
+
+useEffect(() => {
+void loadReport()
+}, [loadReport])
+
+const totalPnL = stats.totalUnrealizedPnL + stats.totalRealizedPnL
+
+const returnRate =
+stats.totalBuyValue > 0
+? (stats.totalUnrealizedPnL / stats.totalBuyValue) * 100
+: 0
+
+if (loading) {
+return ( <section className="rounded-2xl border border-gray-200 bg-white p-8 dark:border-gray-700 dark:bg-gray-900"> <div className="flex items-center justify-center gap-3 py-10"> <RefreshCw className="h-5 w-5 animate-spin text-blue-600" />
+
+
+      <span className="text-sm text-gray-500 dark:text-gray-400">
+        Đang tải báo cáo danh mục...
+      </span>
+    </div>
+  </section>
+)
+
+
+}
+
+return ( <section className="space-y-6"> <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between"> <div> <h2 className="text-xl font-bold text-gray-900 dark:text-white">
+Báo cáo danh mục đầu tư </h2>
+
+
+      <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
+        Tổng hợp giao dịch và hiệu quả đầu tư từ Supabase.
+      </p>
+    </div>
+
+    <button
+      type="button"
+      onClick={() => void loadReport(true)}
+      disabled={refreshing}
+      className="inline-flex items-center justify-center gap-2 rounded-xl border border-gray-200 bg-white px-4 py-2.5 text-sm font-medium text-gray-700 transition hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-60 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-200 dark:hover:bg-gray-800"
+    >
+      <RefreshCw
+        className={`h-4 w-4 ${refreshing ? 'animate-spin' : ''}`}
+      />
+
+      Làm mới báo cáo
+    </button>
+  </div>
+
+  {error && (
+    <div className="flex items-start gap-3 rounded-xl border border-red-200 bg-red-50 p-4 text-sm text-red-700 dark:border-red-900 dark:bg-red-950/40 dark:text-red-300">
+      <AlertCircle className="mt-0.5 h-5 w-5 shrink-0" />
+
+      <div>
+        <p className="font-semibold">Không thể tải báo cáo</p>
+        <p className="mt-1 break-words">{error}</p>
+
+        <button
+          type="button"
+          onClick={() => void loadReport(true)}
+          className="mt-2 font-semibold underline"
+        >
+          Thử lại
+        </button>
+      </div>
+    </div>
+  )}
+
+  <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
+    <StatCard
+      title="Giá trị vốn đang nắm giữ"
+      value={`${formatMoney(stats.totalBuyValue)} đ`}
+      subtitle={`${stats.totalPositions} vị thế đang mở`}
+      icon={<Wallet className="h-5 w-5" />}
+    />
+
+    <StatCard
+      title="Giá trị thị trường"
+      value={`${formatMoney(stats.totalCurrentValue)} đ`}
+      subtitle="Theo giá hiện tại được lưu"
+      icon={<CircleDollarSign className="h-5 w-5" />}
+    />
+
+    <StatCard
+      title="Lãi/lỗ chưa thực hiện"
+      value={`${stats.totalUnrealizedPnL > 0 ? '+' : ''}${formatMoney(stats.totalUnrealizedPnL)} đ`}
+      subtitle={`Tỷ suất: ${formatPercent(returnRate)}`}
+      icon={
+        stats.totalUnrealizedPnL >= 0 ? (
+          <TrendingUp className="h-5 w-5" />
+        ) : (
+          <TrendingDown className="h-5 w-5" />
+        )
+      }
+      positive={stats.totalUnrealizedPnL > 0}
+      negative={stats.totalUnrealizedPnL < 0}
+    />
+
+    <StatCard
+      title="Lãi/lỗ đã thực hiện"
+      value={`${stats.totalRealizedPnL > 0 ? '+' : ''}${formatMoney(stats.totalRealizedPnL)} đ`}
+      subtitle="Từ các vị thế đã bán"
+      icon={<Activity className="h-5 w-5" />}
+      positive={stats.totalRealizedPnL > 0}
+      negative={stats.totalRealizedPnL < 0}
+    />
+  </div>
+
+  <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
+    <div className="rounded-2xl border border-gray-200 bg-white p-5 shadow-sm dark:border-gray-700 dark:bg-gray-900 lg:col-span-2">
+      <div className="flex items-center gap-2">
+        <PieChart className="h-5 w-5 text-blue-600 dark:text-blue-400" />
+
+        <h3 className="font-bold text-gray-900 dark:text-white">
+          Hiệu quả danh mục
+        </h3>
+      </div>
+
+      <div className="mt-5 grid grid-cols-1 gap-4 sm:grid-cols-2">
+        <div className="rounded-xl bg-gray-50 p-4 dark:bg-gray-800">
+          <p className="text-sm text-gray-500 dark:text-gray-400">
+            Tổng lãi/lỗ đã ghi nhận
+          </p>
+
+          <p
+            className={`mt-2 text-2xl font-bold ${
+              totalPnL > 0
+                ? 'text-emerald-600 dark:text-emerald-400'
+                : totalPnL < 0
+                  ? 'text-red-600 dark:text-red-400'
+                  : 'text-gray-900 dark:text-white'
+            }`}
+          >
+            {totalPnL > 0 ? '+' : ''}
+            {formatMoney(totalPnL)} đ
+          </p>
+
+          <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
+            Lãi/lỗ mở + lãi/lỗ đã bán
+          </p>
+        </div>
+
+        <div className="rounded-xl bg-gray-50 p-4 dark:bg-gray-800">
+          <p className="text-sm text-gray-500 dark:text-gray-400">
+            Tổng phí giao dịch
+          </p>
+
+          <p className="mt-2 text-2xl font-bold text-gray-900 dark:text-white">
+            {formatMoney(stats.totalFees)} đ
+          </p>
+
+          <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
+            Phí mua và phí bán đã lưu
+          </p>
+        </div>
+      </div>
+
+      <div className="mt-6">
+        <div className="mb-2 flex items-center justify-between gap-3">
+          <span className="text-sm font-medium text-gray-700 dark:text-gray-300">
+            Tỷ lệ vị thế đang lãi
+          </span>
+
+          <span className="text-sm font-bold text-gray-900 dark:text-white">
+            {stats.profitableRate.toFixed(1)}%
+          </span>
+        </div>
+
+        <div className="h-3 overflow-hidden rounded-full bg-gray-100 dark:bg-gray-800">
+          <div
+            className="h-full rounded-full bg-emerald-500 transition-all duration-500"
+            style={{
+              width: `${Math.min(100, Math.max(0, stats.profitableRate))}%`,
+            }}
+          />
+        </div>
+
+        <div className="mt-3 flex flex-wrap gap-x-5 gap-y-2 text-sm">
+          <span className="inline-flex items-center gap-2 text-emerald-600 dark:text-emerald-400">
+            <TrendingUp className="h-4 w-4" />
+            Đang lãi: {stats.winningPositions}
+          </span>
+
+          <span className="inline-flex items-center gap-2 text-red-600 dark:text-red-400">
+            <TrendingDown className="h-4 w-4" />
+            Đang lỗ: {stats.losingPositions}
+          </span>
+
+          <span className="inline-flex items-center gap-2 text-gray-500 dark:text-gray-400">
+            <Activity className="h-4 w-4" />
+            Tổng vị thế: {stats.totalPositions}
+          </span>
+        </div>
+      </div>
+    </div>
+
+    <div className="rounded-2xl border border-gray-200 bg-white p-5 shadow-sm dark:border-gray-700 dark:bg-gray-900">
+      <div className="flex items-center gap-2">
+        <Activity className="h-5 w-5 text-blue-600 dark:text-blue-400" />
+
+        <h3 className="font-bold text-gray-900 dark:text-white">
+          Tóm tắt danh mục
+        </h3>
+      </div>
+
+      <div className="mt-5 space-y-4">
+        <div className="flex items-center justify-between gap-3">
+          <span className="text-sm text-gray-500 dark:text-gray-400">
+            Số mã đang nắm giữ
+          </span>
+
+          <span className="font-bold text-gray-900 dark:text-white">
+            {stats.totalAssets}
+          </span>
+        </div>
+
+        <div className="flex items-center justify-between gap-3">
+          <span className="text-sm text-gray-500 dark:text-gray-400">
+            Số vị thế đang mở
+          </span>
+
+          <span className="font-bold text-gray-900 dark:text-white">
+            {stats.totalPositions}
+          </span>
+        </div>
+
+        <div className="flex items-center justify-between gap-3">
+          <span className="text-sm text-gray-500 dark:text-gray-400">
+            Vị thế đang lãi
+          </span>
+
+          <span className="font-bold text-emerald-600 dark:text-emerald-400">
+            {stats.winningPositions}
+          </span>
+        </div>
+
+        <div className="flex items-center justify-between gap-3">
+          <span className="text-sm text-gray-500 dark:text-gray-400">
+            Vị thế đang lỗ
+          </span>
+
+          <span className="font-bold text-red-600 dark:text-red-400">
+            {stats.losingPositions}
+          </span>
+        </div>
+
+        <div className="border-t border-gray-200 pt-4 dark:border-gray-700">
+          <p className="text-sm text-gray-500 dark:text-gray-400">
+            Trạng thái danh mục
+          </p>
+
+          <div className="mt-2 flex items-center gap-2">
+            {stats.totalPositions === 0 ? (
+              <>
+                <AlertCircle className="h-5 w-5 text-gray-400" />
+
+                <span className="text-sm font-semibold text-gray-500 dark:text-gray-400">
+                  Chưa có vị thế mở
+                </span>
+              </>
+            ) : stats.totalUnrealizedPnL >= 0 ? (
+              <>
+                <CheckCircle2 className="h-5 w-5 text-emerald-600" />
+
+                <span className="text-sm font-semibold text-emerald-600 dark:text-emerald-400">
+                  Đang có lãi
+                </span>
+              </>
+            ) : (
+              <>
+                <TrendingDown className="h-5 w-5 text-red-600" />
+
+                <span className="text-sm font-semibold text-red-600 dark:text-red-400">
+                  Đang có lỗ
+                </span>
+              </>
+            )}
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  {!error && transactions.length === 0 && (
+    <div className="rounded-2xl border border-dashed border-gray-300 bg-gray-50 p-8 text-center dark:border-gray-700 dark:bg-gray-900">
+      <Wallet className="mx-auto h-10 w-10 text-gray-400" />
+
+      <h3 className="mt-3 font-semibold text-gray-900 dark:text-white">
+        Chưa có dữ liệu giao dịch
+      </h3>
+
+      <p className="mt-2 text-sm text-gray-500 dark:text-gray-400">
+        Khi bạn thêm giao dịch vào danh mục, báo cáo sẽ tự động tổng hợp
+        từ bảng portfolio_transactions.
+      </p>
+    </div>
+  )}
+</section>
+
+
+)
+}
