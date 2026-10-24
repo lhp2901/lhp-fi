@@ -4,15 +4,7 @@
 import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { supabase } from '@/lib/supabase'
-
-import AnalysisPage from './analysis/stocks/page'
-import MarketAnalysisPage from './analysis/market-analysis/page'
-import DashboardContent from '@/components/market-analysis/DashboardContent'
 import MarketMoodCard from '@/components/market-analysis/MarketMoodCard'
-import CryptoDashboardPage from '@/components/crypto/CryptoDashboardPage'
-import FootprintPage from './footprint/page'
-import PortfolioPage from '@/app/(auth-required)/portfolio/page'
-import SavingsPage from '@/app/(auth-required)/portfolio/savings/page'
 
 const quotes = [
   'Đừng bao giờ đặt tất cả trứng vào cùng một giỏ.',
@@ -29,84 +21,83 @@ const getQuoteColor = (hour: number): string => {
   return 'text-lime-300'
 }
 
+const getTimeColor = (hour: number): string => {
+  if (hour >= 5 && hour < 12) return 'text-yellow-400'
+  if (hour >= 12 && hour < 17) return 'text-sky-400'
+  if (hour >= 17 && hour < 21) return 'text-emerald-300'
+  return 'text-rose-400'
+}
 
-type TabKey =
-  | 'dashboard'
-  | 'market'
-  | 'analysis'
-  | 'footprint'
-  | 'crypto'
-  | 'portfolio'
-  | 'savings'
-
-
+const getDayText = (day: number): string => {
+  switch (day) {
+    case 0:
+      return 'Sun ☀️ "Nạp năng lượng"'
+    case 1:
+      return 'Mon 💼 "Khởi động chinh chiến"'
+    case 2:
+      return 'Tue ⚔️ "Vào trận không run tay"'
+    case 3:
+      return 'Wed 🧠 "Phân tích chuẩn chỉnh"'
+    case 4:
+      return 'Thu 🔎 "Săn điểm vàng"'
+    case 5:
+      return 'Fri 🚀 "Kết phiên rực rỡ"'
+    case 6:
+      return 'Sat 🧘‍♂️ "Đúc kết – Lên chiến lược"'
+    default:
+      return ''
+  }
+}
 
 export default function HomePage() {
   const router = useRouter()
 
   const [showMood, setShowMood] = useState(false)
   const [loading, setLoading] = useState(true)
-  const [activeTab, setActiveTab] = useState<TabKey>('dashboard')
-  const [currentTime, setCurrentTime] = useState(new Date())
+  const [currentTime, setCurrentTime] = useState<Date | null>(null)
 
   // Đồng hồ thời gian thực
   useEffect(() => {
-    const timer = setInterval(() => {
+    const updateTime = () => {
       setCurrentTime(new Date())
-    }, 1000)
+    }
+
+    updateTime()
+
+    const timer = setInterval(updateTime, 1000)
 
     return () => clearInterval(timer)
   }, [])
-
-  const getTimeColor = (hour: number): string => {
-    if (hour >= 5 && hour < 12) return 'text-yellow-400'
-    if (hour >= 12 && hour < 17) return 'text-sky-400'
-    if (hour >= 17 && hour < 21) return 'text-emerald-300'
-    return 'text-rose-400'
-  }
-
-  const getDayText = (day: number): string => {
-    switch (day) {
-      case 0:
-        return 'Sun ☀️ "Nạp năng lượng"'
-      case 1:
-        return 'Mon 💼 "Khởi động chinh chiến"'
-      case 2:
-        return 'Tue ⚔️ "Vào trận không run tay"'
-      case 3:
-        return 'Wed 🧠 "Phân tích chuẩn chỉnh"'
-      case 4:
-        return 'Thu 🔎 "Săn điểm vàng"'
-      case 5:
-        return 'Fri 🚀 "Kết phiên rực rỡ"'
-      case 6:
-        return 'Sat 🧘‍♂️ "Đúc kết – Lên chiến lược"'
-      default:
-        return ''
-    }
-  }
 
   // Kiểm tra đăng nhập
   useEffect(() => {
     let mounted = true
 
     const fetchUser = async () => {
-      const {
-        data: { session },
-        error,
-      } = await supabase.auth.getSession()
+      try {
+        const {
+          data: { session },
+          error,
+        } = await supabase.auth.getSession()
 
-      if (!mounted) return
+        if (!mounted) return
 
-      if (error || !session) {
-        router.push('/login')
-        return
+        if (error || !session) {
+          router.replace('/login')
+          return
+        }
+
+        setLoading(false)
+      } catch (error) {
+        console.error('Lỗi kiểm tra đăng nhập:', error)
+
+        if (mounted) {
+          router.replace('/login')
+        }
       }
-
-      setLoading(false)
     }
 
-    fetchUser()
+    void fetchUser()
 
     return () => {
       mounted = false
@@ -116,165 +107,108 @@ export default function HomePage() {
   // Đang kiểm tra đăng nhập
   if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-black text-white">
+      <div className="flex min-h-screen items-center justify-center bg-black text-white">
         <h2 className="animate-pulse text-xl font-semibold">
-          ⏳ Đang tải dữ liệu...
+          ⏳ Đang kiểm tra đăng nhập...
         </h2>
       </div>
     )
   }
 
   return (
-    <div className="space-y-6">
-      {/* Đồng hồ và câu nói truyền cảm hứng */}
-      <div className="relative w-full h-10 bg-black rounded-md border border-gray-700 flex items-center px-2">
-        {/* Câu nói chạy */}
-        <div className="absolute left-4 right-[300px] top-0 bottom-0 overflow-hidden flex items-center">
+    <div className="min-w-0 space-y-5">
+
+      {/* ĐỒNG HỒ VÀ CÂU NÓI TRUYỀN CẢM HỨNG */}
+      <div className="relative z-20 flex min-h-11 w-full items-center rounded-xl border border-slate-800 bg-black px-3">
+
+        {/* Câu nói chạy ngang */}
+        <div className="pointer-events-none absolute inset-y-0 left-3 right-[280px] flex items-center overflow-hidden">
           <div
-            className={`whitespace-nowrap font-semibold text-lg animate-marquee ${getQuoteColor(
-              currentTime.getHours()
-            )}`}
-            style={{ animationDuration: '20s' }}
+            className={`animate-marquee whitespace-nowrap text-sm font-semibold sm:text-base ${
+              currentTime
+                ? getQuoteColor(currentTime.getHours())
+                : 'text-indigo-300'
+            }`}
+            style={{ animationDuration: '25s' }}
           >
-            {quotes.map((quote, idx) => (
-              <span key={idx} className="mr-10">
-                {quote}
+            {quotes.map((quote, index) => (
+              <span key={index} className="mr-12">
+                ✨ {quote}
               </span>
             ))}
           </div>
         </div>
 
-        {/* Đồng hồ và MarketMoodCard */}
-        <div className="ml-auto z-10 relative">
+        {/* Đồng hồ và tâm lý thị trường */}
+        <div className="relative z-10 ml-auto">
           <button
             type="button"
-            onClick={() => setShowMood(!showMood)}
-            className={`font-bold text-sm font-mono flex items-center gap-2 pr-2 text-right whitespace-nowrap ${getTimeColor(
-              currentTime.getHours()
-            )}`}
+            onClick={() => setShowMood((previous) => !previous)}
+            aria-expanded={showMood}
+            className={`flex items-center gap-2 whitespace-nowrap rounded-lg bg-black/90 px-2 py-2 text-right font-mono text-xs font-bold sm:text-sm ${
+              currentTime
+                ? getTimeColor(currentTime.getHours())
+                : 'text-sky-400'
+            }`}
           >
             <span>
-              📅 {getDayText(currentTime.getDay())} –
+              📅 {currentTime ? getDayText(currentTime.getDay()) : 'LHP-FI'}
             </span>
 
+            <span className="text-slate-500">|</span>
+
             <span>
-              ⏰ {currentTime.toLocaleTimeString('vi-VN')}
+              ⏰{' '}
+              {currentTime
+                ? currentTime.toLocaleTimeString('vi-VN')
+                : '--:--:--'}
+            </span>
+
+            <span className="text-slate-500">
+              {showMood ? '▲' : '▼'}
             </span>
           </button>
 
           {showMood && (
-            <div className="absolute right-0 mt-2 bg-slate-900 border border-white/10 rounded-lg shadow-lg p-4 z-50 w-[260px]">
-              <MarketMoodCard />
-
+            <div className="absolute right-0 top-full z-50 mt-2 w-[min(300px,calc(100vw-2rem))] rounded-xl border border-slate-700 bg-slate-950 p-4 shadow-2xl">
               <button
                 type="button"
                 onClick={() => setShowMood(false)}
-                className="absolute top-1 right-1 text-xs text-red-400 hover:underline"
+                aria-label="Đóng bảng tâm lý thị trường"
+                className="absolute right-2 top-2 z-10 rounded px-2 py-1 text-sm text-red-400 hover:bg-slate-800"
               >
-                ✖
+                ✕
               </button>
+
+              <MarketMoodCard />
             </div>
           )}
         </div>
       </div>
 
-      {/* Các tab chính */}
-      <div className="mb-4 flex flex-wrap gap-3">
-        {[
-          { key: 'dashboard', label: '📊 Dashboard' },
-          { key: 'market', label: '🌏 Thị Trường' },
-          { key: 'analysis', label: '📈 Cổ phiếu' },
-          { key: 'footprint', label: '🔥 Footprint Cổ phiếu' },
-          {
-            key: 'derivatives',
-            label: '⚡ BOOKMAP VN30F1M',
-            href: 'https://vn30f1m.trunghsgs.edu.vn/',
-          },
-          { key: 'crypto', label: '💎 Crypto' },
-          { key: 'portfolio', label: '💼 Giao dịch' },
-          { key: 'savings', label: '💰 Tiết kiệm' },
-        ].map((tab) =>
-          tab.href ? (
-            <a
-              key={tab.key}
-              href={tab.href}
-              target={tab.key === 'derivatives' ? '_blank' : undefined}
-              rel={
-                tab.key === 'derivatives'
-                  ? 'noopener noreferrer'
-                  : undefined
-              }
-              className="rounded-md border px-4 py-2 text-sm font-medium text-slate-200 hover:bg-white/10"
-            >
-              {tab.label}
-            </a>
-          ) : (
-            <button
-              key={tab.key}
-              type="button"
-              onClick={() => setActiveTab(tab.key as TabKey)}
-              className={`rounded-md border px-4 py-2 text-sm font-medium ${
-                activeTab === tab.key
-                  ? 'border-indigo-500 bg-indigo-600 text-white'
-                  : 'text-slate-200 hover:bg-white/10'
-              }`}
-            >
-              {tab.label}
-            </button>
-          )
-        )}
-      </div>
+      {/* KHU VỰC NỘI DUNG TRANG CHỦ */}
+      <section className="min-w-0">
+        <div className="mb-5">
+          <h1 className="text-xl font-bold tracking-wide text-white sm:text-2xl">
+            📊 LHP-FI Dashboard
+          </h1>
 
-      {/* Nội dung Dashboard */}
-      {activeTab === 'dashboard' && (
-        <section className="mt-4">
-          <DashboardContent />
-        </section>
-      )}
+          <p className="mt-1 text-sm text-slate-400">
+            Trung tâm theo dõi thị trường và quản lý tài chính của bạn.
+          </p>
+        </div>
 
-      {/* Nội dung Thị trường */}
-      {activeTab === 'market' && (
-        <section className="mt-4">
-          <MarketAnalysisPage />
-        </section>
-      )}
-
-      {/* Nội dung Phân tích cổ phiếu */}
-      {activeTab === 'analysis' && (
-        <section className="mt-4">
-          <AnalysisPage />
-        </section>
-      )}
-
-      {/* Nội dung Footprint */}
-      {activeTab === 'footprint' && (
-        <section className="mt-4">
-          <FootprintPage />
-        </section>
-      )}
-
-      {/* Nội dung Crypto */}
-      {activeTab === 'crypto' && (
-        <section className="mt-4">
-          <CryptoDashboardPage />
-        </section>
-      )}
-
-      {/* Nội dung Giao dịch */}
-      {activeTab === 'portfolio' && (
-        <section className="mt-4">
-          <PortfolioPage />
-        </section>
-      )}
-
-      {/* Nội dung Tiết kiệm */}
-      {activeTab === 'savings' && (
-        <section className="mt-4">
-          <SavingsPage />
-        </section>
-      )}
-      
+        {/* Nội dung Dashboard */}
+        <DashboardHome />
+      </section>
     </div>
   )
+}
+
+// Tách component để giữ phần import Dashboard rõ ràng
+import DashboardContent from '@/components/market-analysis/DashboardContent'
+
+function DashboardHome() {
+  return <DashboardContent />
 }
 
