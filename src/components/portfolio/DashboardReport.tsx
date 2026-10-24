@@ -1,36 +1,36 @@
 'use client'
 
 import { useCallback, useEffect, useMemo, useState } from 'react'
-import { createClient } from '@supabase/supabase-js'
-import {
-  calculatePnL,
-  formatNumber,
-} from '@/lib/utils'
-import {
-  PieChart,
-  Pie,
-  Cell,
-  Tooltip,
-  ResponsiveContainer,
-  BarChart,
-  Bar,
-  XAxis,
-  YAxis,
-  CartesianGrid,
-} from 'recharts'
-import EditTransactionForm from './EditTransactionForm'
 
-// =====================================================
-// SUPABASE
-// =====================================================
+import { createBrowserClient } from '@supabase/ssr'
+
+import {
+calculatePnL,
+formatNumber,
+} from '@/lib/utils'
+
+import {
+PieChart,
+Pie,
+Cell,
+Tooltip,
+ResponsiveContainer,
+BarChart,
+Bar,
+XAxis,
+YAxis,
+CartesianGrid,
+} from 'recharts'
+
+import EditTransactionForm from './EditTransactionForm'
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
 const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
 
 const supabase =
-  supabaseUrl && supabaseAnonKey
-    ? createClient(supabaseUrl, supabaseAnonKey)
-    : null
+supabaseUrl && supabaseAnonKey
+? createBrowserClient(supabaseUrl, supabaseAnonKey)
+: null
 
 const COLORS = ['#FFBB28', '#00C49F', '#8884d8', '#FF8042', '#0088FE']
 
@@ -665,6 +665,7 @@ export default function DashboardReport() {
               <th className="whitespace-nowrap p-3">Số lượng</th>
               <th className="whitespace-nowrap p-3">Lãi/lỗ</th>
               <th className="whitespace-nowrap p-3">Trạng thái</th>
+              <th className="whitespace-nowrap p-3">Ghi chú</th>
               <th className="whitespace-nowrap p-3">Thao tác</th>
             </tr>
           </thead>
@@ -715,6 +716,13 @@ export default function DashboardReport() {
                       : '🕒 Nắm giữ'}
                   </td>
 
+                  {/* Ghi chú */}
+
+                  <td className="max-w-xs p-3"> 
+                  <div className="break-words text-orange-400" title={ typeof tx.note === 'string' ? tx.note : tx.note != null ? String(tx.note) : '' } > 📝{' '} {typeof tx.note === 'string' ? tx.note || '—' : tx.note != null ? String(tx.note) : '—'} 
+                  </div> 
+                  </td>
+                          
                   <td className="whitespace-nowrap p-3">
                     <button
                       type="button"
