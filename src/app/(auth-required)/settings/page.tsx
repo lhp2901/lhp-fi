@@ -1552,9 +1552,9 @@ export default function SettingsPage() {
             />
 
             <QuickLink
-              href="/footprint"
-              title="Footprint / Order Flow"
-              description="Theo dõi hoạt động giao dịch theo mức giá."
+              href="settings/footprint"
+              title="Footprint Control Center"
+              description="Quản trị dữ liệu giao dịch, Order Flow và chất lượng dữ liệu."
               icon="⇅"
             />
           </div>
