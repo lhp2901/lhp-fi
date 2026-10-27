@@ -136,6 +136,14 @@ function firstValue(
   return fallback
 }
 
+function formatFootprintValue(value: number | null | undefined) {
+  if (value == null || !Number.isFinite(value)) return "0"
+
+  return (value * 10).toLocaleString("vi-VN", {
+    maximumFractionDigits: 0,
+  })
+}
+
 function formatNumber(value: number, decimals = 0): string {
   return new Intl.NumberFormat('vi-VN', {
     minimumFractionDigits: decimals,
@@ -1130,6 +1138,7 @@ function FootprintChart({
 }
 
 export default function FootprintPage() {
+  
   const [symbols, setSymbols] = useState<string[]>(DEFAULT_SYMBOLS)
   const [symbol, setSymbol] = useState('FPT')
   const [symbolInput, setSymbolInput] = useState('')
@@ -1140,7 +1149,7 @@ export default function FootprintPage() {
   const [trades, setTrades] = useState<FootprintTrade[]>([])
   const [candles, setCandles] = useState<FootprintCandle[]>([])
   const [streamStatus, setStreamStatus] = useState<StreamStatus>({})
-
+  
   const [loading, setLoading] = useState(true)
   const [requestError, setRequestError] = useState('')
   const [actionMessage, setActionMessage] = useState('')
@@ -1422,6 +1431,13 @@ export default function FootprintPage() {
       'ref_price',
     ]),
   )
+
+  const priceColorClass =
+  lastPrice > referencePrice
+    ? "text-green-500"
+    : lastPrice < referencePrice
+      ? "text-red-500"
+      : "text-yellow-400"
 
   const change = asNumber(
     firstValue(payload, ['change', 'price_change']),
@@ -1742,6 +1758,13 @@ export default function FootprintPage() {
             label="Last Price"
             value={lastPrice ? formatPrice(lastPrice) : '—'}
             sub={lastCandle ? `Nến ${lastCandle.time}` : 'Giá mới nhất'}
+            tone={
+              lastPrice > referencePrice
+                ? 'green'
+                : lastPrice < referencePrice
+                  ? 'red'
+                  : 'yellow'
+            }
           />
 
           <Metric
@@ -1753,14 +1776,14 @@ export default function FootprintPage() {
 
           <Metric
             label="Footprint Volume"
-            value={formatNumber(totalVolume)}
+            value={formatFootprintValue(totalVolume)}
             sub={`${levels.length} mức giá`}
           />
-
+       
           <Metric
             label="Net Delta"
-            value={signed(totalDelta)}
-            sub={`Bid ${formatNumber(totalBid)} / Ask ${formatNumber(totalAsk)}`}
+            value={formatFootprintValue(totalDelta)}
+            sub={`Bid ${formatFootprintValue(totalBid)} / Ask ${formatFootprintValue(totalAsk)}`}
             tone={totalDelta > 0 ? 'green' : totalDelta < 0 ? 'red' : 'neutral'}
           />
 
@@ -1768,7 +1791,7 @@ export default function FootprintPage() {
             label="Cumulative Delta"
             value={
               Number.isFinite(cumulativeDelta)
-                ? signed(cumulativeDelta)
+                ? formatFootprintValue(cumulativeDelta)
                 : '—'
             }
             sub="Theo dữ liệu backend"
@@ -1780,7 +1803,9 @@ export default function FootprintPage() {
                   : 'neutral'
             }
           />
+
         </section>
+     
      
         <Panel
           title="MARKET CHART"
@@ -1853,12 +1878,12 @@ export default function FootprintPage() {
 
             <Metric
               label="Volume lịch sử"
-              value={formatNumber(candleVolume)}
+              value={formatFootprintValue(candleVolume)}
             />
 
             <Metric
               label="Delta các nến"
-              value={signed(candleDelta)}
+              value={formatFootprintValue(candleDelta)}
               tone={
                 candleDelta > 0
                   ? 'green'
@@ -1882,9 +1907,10 @@ export default function FootprintPage() {
         </Panel>
 
         <section className="grid grid-cols-1 gap-4 2xl:grid-cols-[minmax(0,1.5fr)_minmax(320px,0.7fr)]">
+        
           <Panel
             title="FOOTPRINT LADDER"
-            subtitle="Bid × Ask · Delta tại từng mức giá"
+            subtitle="Ask bên trái · Price ở giữa · Bid bên phải · Delta tại từng mức giá"
           >
             {levels.length === 0 ? (
               <EmptyState text="Backend chưa trả về levels hoặc price_levels." />
@@ -1893,11 +1919,21 @@ export default function FootprintPage() {
                 <table className="w-full min-w-[520px] border-collapse text-xs tabular-nums">
                   <thead className="sticky top-0 z-10 bg-[#0c121b] text-[10px] uppercase tracking-wider text-slate-500">
                     <tr>
-                      <th className="px-3 py-3 text-right">Bid</th>
-                      <th className="px-3 py-3 text-center">Price</th>
-                      <th className="px-3 py-3 text-left">Ask</th>
-                      <th className="px-3 py-3 text-right">Delta</th>
-                      <th className="px-3 py-3 text-right">Volume</th>
+                      <th className="px-3 py-3 text-left text-emerald-400">
+                        Ask
+                      </th>
+                      <th className="px-3 py-3 text-center">
+                        Price
+                      </th>
+                      <th className="px-3 py-3 text-right text-rose-400">
+                        Bid
+                      </th>
+                      <th className="px-3 py-3 text-right">
+                        Delta
+                      </th>
+                      <th className="px-3 py-3 text-right">
+                        Volume
+                      </th>
                     </tr>
                   </thead>
 
@@ -1918,32 +1954,36 @@ export default function FootprintPage() {
                           key={`${row.price}-${index}`}
                           className="border-t border-slate-800/70 hover:bg-white/[0.025]"
                         >
-                          <td className="relative overflow-hidden px-3 py-2.5 text-right text-rose-300">
-                            <div
-                              className="absolute inset-y-1 right-0 rounded-l bg-rose-500/20"
-                              style={{ width: `${bidWidth}%` }}
-                            />
-
-                            <span className="relative font-semibold">
-                              {formatNumber(row.bid)}
-                            </span>
-                          </td>
-
-                          <td className="whitespace-nowrap border-x border-slate-800 bg-[#0c121b] px-3 py-2.5 text-center font-bold">
-                            {formatPrice(row.price)}
-                          </td>
-
+                          {/* ASK - BÊN TRÁI */}
                           <td className="relative overflow-hidden px-3 py-2.5 text-left text-emerald-300">
                             <div
-                              className="absolute inset-y-1 left-0 rounded-r bg-emerald-500/20"
+                              className="absolute inset-y-1 right-0 rounded-l bg-emerald-500/20"
                               style={{ width: `${askWidth}%` }}
                             />
 
                             <span className="relative font-semibold">
-                              {formatNumber(row.ask)}
+                              {formatFootprintValue(row.ask)}
                             </span>
                           </td>
 
+                          {/* PRICE - Ở GIỮA */}
+                          <td className="whitespace-nowrap border-x border-slate-800 bg-[#0c121b] px-3 py-2.5 text-center font-bold text-slate-100">
+                            {formatPrice(row.price)}
+                          </td>
+
+                          {/* BID - BÊN PHẢI */}
+                          <td className="relative overflow-hidden px-3 py-2.5 text-right text-rose-300">
+                            <div
+                              className="absolute inset-y-1 left-0 rounded-r bg-rose-500/20"
+                              style={{ width: `${bidWidth}%` }}
+                            />
+
+                            <span className="relative font-semibold">
+                              {formatFootprintValue(row.bid)}
+                            </span>
+                          </td>
+
+                          {/* DELTA */}
                           <td
                             className={`px-3 py-2.5 text-right font-bold ${
                               row.delta > 0
@@ -1953,11 +1993,12 @@ export default function FootprintPage() {
                                   : 'text-slate-400'
                             }`}
                           >
-                            {signed(row.delta)}
+                            {formatFootprintValue(row.delta)}
                           </td>
 
+                          {/* VOLUME */}
                           <td className="px-3 py-2.5 text-right text-slate-300">
-                            {formatNumber(row.volume)}
+                            {formatFootprintValue(row.volume)}
                           </td>
                         </tr>
                       )
@@ -1966,30 +2007,36 @@ export default function FootprintPage() {
 
                   <tfoot className="sticky bottom-0 border-t border-slate-700 bg-[#0c121b] font-bold">
                     <tr>
-                      <td className="px-3 py-3 text-right text-rose-300">
-                        {formatNumber(totalBid)}
+                      {/* TỔNG ASK */}
+                      <td className="px-3 py-3 text-left text-emerald-300">
+                        {formatFootprintValue(totalAsk)}
                       </td>
 
                       <td className="px-3 py-3 text-center">
                         TOTAL
                       </td>
 
-                      <td className="px-3 py-3 text-left text-emerald-300">
-                        {formatNumber(totalAsk)}
+                      {/* TỔNG BID */}
+                      <td className="px-3 py-3 text-right text-rose-300">
+                        {formatFootprintValue(totalBid)}
                       </td>
 
+                      {/* TỔNG DELTA */}
                       <td
                         className={`px-3 py-3 text-right ${
-                          totalDelta >= 0
+                          totalDelta > 0
                             ? 'text-emerald-400'
-                            : 'text-rose-400'
+                            : totalDelta < 0
+                              ? 'text-rose-400'
+                              : 'text-slate-400'
                         }`}
                       >
-                        {signed(totalDelta)}
+                        {formatFootprintValue(totalDelta)}
                       </td>
 
-                      <td className="px-3 py-3 text-right">
-                        {formatNumber(totalVolume)}
+                      {/* TỔNG VOLUME */}
+                      <td className="px-3 py-3 text-right text-slate-300">
+                        {formatFootprintValue(totalVolume)}
                       </td>
                     </tr>
                   </tfoot>
@@ -1997,7 +2044,7 @@ export default function FootprintPage() {
               </div>
             )}
           </Panel>
-
+        
           <Panel
             title="VOLUME PROFILE"
             subtitle="Phân bổ Volume theo giá trong dữ liệu đang tải"
@@ -2019,15 +2066,18 @@ export default function FootprintPage() {
               <div className="space-y-2 p-4">
                 {profile.map((item, index) => {
                   const width =
-                    (item.volume / maxProfile) * 100
+                    maxProfile > 0
+                      ? (item.volume / maxProfile) * 100
+                      : 0
 
                   const isPoc = item.price === pocPrice
 
                   return (
                     <div
                       key={`${item.price}-${index}`}
-                      className="grid grid-cols-[70px_minmax(0,1fr)_75px] items-center gap-2 text-[11px]"
+                      className="grid grid-cols-[70px_minmax(0,1fr)_85px] items-center gap-2 text-[11px]"
                     >
+                      {/* GIÁ */}
                       <span
                         className={`text-right ${
                           isPoc
@@ -2038,6 +2088,7 @@ export default function FootprintPage() {
                         {formatPrice(item.price)}
                       </span>
 
+                      {/* THANH VOLUME */}
                       <div className="h-5 overflow-hidden rounded-sm bg-slate-800/60">
                         <div
                           className={`h-full rounded-sm ${
@@ -2045,12 +2096,21 @@ export default function FootprintPage() {
                               ? 'bg-amber-400/80'
                               : 'bg-sky-500/70'
                           }`}
-                          style={{ width: `${width}%` }}
+                          style={{
+                            width: `${Math.min(100, Math.max(0, width))}%`,
+                          }}
                         />
                       </div>
 
-                      <span className="text-right tabular-nums text-slate-300">
-                        {formatNumber(item.volume)}
+                      {/* VOLUME */}
+                      <span
+                        className={`text-right tabular-nums ${
+                          isPoc
+                            ? 'font-bold text-amber-400'
+                            : 'text-slate-300'
+                        }`}
+                      >
+                        {formatFootprintValue(item.volume)}
                       </span>
                     </div>
                   )
@@ -2063,89 +2123,100 @@ export default function FootprintPage() {
               đang hiển thị. Đây không mặc định là POC của toàn bộ phiên.
             </div>
           </Panel>
+
+
         </section>
 
         <section className="grid grid-cols-1 gap-4 xl:grid-cols-[minmax(0,1.2fr)_minmax(320px,0.8fr)]">
-          <Panel
-            title="TIME & SALES"
-            subtitle="Các giao dịch gần nhất do backend cung cấp"
-            right={
-              <button
-                type="button"
-                onClick={() => setShowTrades((value) => !value)}
-                className="rounded-lg border border-slate-700 px-3 py-1.5 text-xs"
-              >
-                {showTrades ? 'Ẩn' : 'Hiện'}
-              </button>
-            }
-          >
-            {!showTrades ? (
-              <EmptyState text="Time & Sales đang được ẩn." />
-            ) : trades.length === 0 ? (
-              <EmptyState text="Chưa có giao dịch từ backend." />
-            ) : (
-              <div className="max-h-[430px] overflow-auto">
-                <table className="w-full min-w-[420px] text-xs tabular-nums">
-                  <thead className="sticky top-0 bg-[#0c121b] text-[10px] uppercase text-slate-500">
-                    <tr>
-                      <th className="px-3 py-3 text-left">Time</th>
-                      <th className="px-3 py-3 text-right">Price</th>
-                      <th className="px-3 py-3 text-right">Volume</th>
-                      <th className="px-3 py-3 text-center">Side</th>
-                    </tr>
-                  </thead>
+        
+        <Panel
+          title="TIME & SALES"
+          subtitle="Các giao dịch gần nhất do backend cung cấp"
+          right={
+            <button
+              type="button"
+              onClick={() => setShowTrades((value) => !value)}
+              className="rounded-lg border border-slate-700 px-3 py-1.5 text-xs"
+            >
+              {showTrades ? 'Ẩn' : 'Hiện'}
+            </button>
+          }
+        >
+          {!showTrades ? (
+            <EmptyState text="Time & Sales đang được ẩn." />
+          ) : trades.length === 0 ? (
+            <EmptyState text="Chưa có giao dịch từ backend." />
+          ) : (
+            <div className="max-h-[430px] overflow-auto">
+              <table className="w-full min-w-[420px] text-xs tabular-nums">
+                <thead className="sticky top-0 bg-[#0c121b] text-[10px] uppercase text-slate-500">
+                  <tr>
+                    <th className="px-3 py-3 text-left">Time</th>
+                    <th className="px-3 py-3 text-right">Price</th>
+                    <th className="px-3 py-3 text-right">Volume</th>
+                    <th className="px-3 py-3 text-center">Side</th>
+                  </tr>
+                </thead>
 
-                  <tbody>
-                    {trades.map((trade) => {
-                      const buy = isPositiveSide(trade.side)
-                      const sell = isNegativeSide(trade.side)
+                <tbody>
+                  {trades.map((trade) => {
+                    const buy = isPositiveSide(trade.side)
+                    const sell = isNegativeSide(trade.side)
 
-                      return (
-                        <tr
-                          key={trade.id}
-                          className="border-t border-slate-800/70"
+                    return (
+                      <tr
+                        key={trade.id}
+                        className="border-t border-slate-800/70"
+                      >
+                        <td className="px-3 py-2.5 text-slate-400">
+                          {trade.time}
+                        </td>
+
+                        <td
+                          className={`px-3 py-2.5 text-right font-bold ${
+                            buy
+                              ? 'text-emerald-400'
+                              : sell
+                                ? 'text-rose-400'
+                                : 'text-slate-200'
+                          }`}
                         >
-                          <td className="px-3 py-2.5 text-slate-400">
-                            {trade.time}
-                          </td>
+                          {formatPrice(trade.price)}
+                        </td>
 
-                          <td
-                            className={`px-3 py-2.5 text-right font-bold ${
+                        <td
+                          className={`px-3 py-2.5 text-right font-semibold ${
+                            buy
+                              ? 'text-emerald-300'
+                              : sell
+                                ? 'text-rose-300'
+                                : 'text-slate-300'
+                          }`}
+                        >
+                          {formatFootprintValue(trade.volume)}
+                        </td>
+
+                        <td className="px-3 py-2.5 text-center">
+                          <span
+                            className={`rounded px-2 py-1 text-[10px] font-bold ${
                               buy
-                                ? 'text-emerald-400'
+                                ? 'bg-emerald-500/15 text-emerald-400'
                                 : sell
-                                  ? 'text-rose-400'
-                                  : 'text-slate-200'
+                                  ? 'bg-rose-500/15 text-rose-400'
+                                  : 'bg-slate-700 text-slate-300'
                             }`}
                           >
-                            {formatPrice(trade.price)}
-                          </td>
-
-                          <td className="px-3 py-2.5 text-right">
-                            {formatNumber(trade.volume)}
-                          </td>
-
-                          <td className="px-3 py-2.5 text-center">
-                            <span
-                              className={`rounded px-2 py-1 text-[10px] font-bold ${
-                                buy
-                                  ? 'bg-emerald-500/15 text-emerald-400'
-                                  : sell
-                                    ? 'bg-rose-500/15 text-rose-400'
-                                    : 'bg-slate-700 text-slate-300'
-                              }`}
-                            >
-                              {buy ? 'BUY' : sell ? 'SELL' : 'UNKNOWN'}
-                            </span>
-                          </td>
-                        </tr>
-                      )
-                    })}
-                  </tbody>
-                </table>
-              </div>
-            )}
-          </Panel>
+                            {buy ? 'BUY' : sell ? 'SELL' : 'UNKNOWN'}
+                          </span>
+                        </td>
+                      </tr>
+                    )
+                  })}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </Panel>
 
           <Panel
             title="SYSTEM STATUS"
