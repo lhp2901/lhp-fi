@@ -1,4 +1,3 @@
-
 'use client'
 import TradeSignalPanel from "@/components/footprint/TradeSignalPanel";
 
@@ -10,6 +9,7 @@ import React, {
   useState,
 } from 'react'
 
+type StreamConnectionState = 'LIVE' | 'CONNECTING' | 'OFFLINE';
 type JsonObject = Record<string, any>
 
 type FootprintLevel = {
@@ -1156,7 +1156,25 @@ export default function FootprintPage() {
   const [autoRefresh, setAutoRefresh] = useState(true)
   const [lastUpdated, setLastUpdated] = useState<Date | null>(null)
   const [busy, setBusy] = useState(false)
+  const getStreamConnectionState = (): StreamConnectionState => {
+  // Backend xác nhận kết nối thành công.
+  if (streamStatus.connected === true) {
+    return 'LIVE';
+  }
 
+  // Thread đang chạy hoặc đã khởi động nhưng chưa kết nối.
+  if (
+    streamStatus.running === true ||
+    streamStatus.started === true
+  ) {
+    return 'CONNECTING';
+  }
+
+  // Stream đã dừng hoặc backend chưa xác nhận đang chạy.
+  return 'OFFLINE';
+};
+
+  const connectionState = getStreamConnectionState();
   const [chartMode, setChartMode] = useState<ChartMode>('footprint')
   const [footprintMode, setFootprintMode] =
     useState<FootprintMode>('bid-ask')
@@ -1393,6 +1411,12 @@ export default function FootprintPage() {
     [levels],
   )
 
+  // Precompute once; avoid recalculating the ladder maximum for every row.
+  const maxCell = useMemo(
+    () => Math.max(1, ...levels.map((level) => Math.max(level.bid, level.ask))),
+    [levels],
+  )
+
   const candleVolume = useMemo(
     () => candles.reduce((sum, candle) => sum + candle.volume, 0),
     [candles],
@@ -1463,13 +1487,6 @@ export default function FootprintPage() {
     ),
   )
 
-  const isConnected =
-    streamStatus.connected === true ||
-    streamStatus.running === true ||
-    ['connected', 'running', 'active', 'started', 'online'].includes(
-      statusText.toLowerCase(),
-    )
-
   const tradeCount = asNumber(
     firstValue(streamStatus, [
       'trade_count',
@@ -1516,7 +1533,10 @@ export default function FootprintPage() {
     ...profile.map((item) => item.volume),
   )
 
-  const pocPrice = profile[0]?.price
+  const pocPrice = profile.reduce<{ price: number; volume: number } | undefined>(
+    (best, item) => (!best || item.volume > best.volume ? item : best),
+    undefined,
+  )?.price
 
   return (
     <main className="min-h-screen bg-[#080d14] p-3 text-slate-100 sm:p-5">
@@ -1532,15 +1552,23 @@ export default function FootprintPage() {
                 ORDER FLOW TERMINAL
               </span>
 
-              <span
-                className={`rounded-full px-2 py-1 text-[10px] font-bold ${
-                  isConnected
-                    ? 'bg-emerald-500/10 text-emerald-400'
-                    : 'bg-amber-500/10 text-amber-400'
-                }`}
-              >
-                {isConnected ? '● LIVE' : '● OFFLINE / UNKNOWN'}
-              </span>
+           
+            <span
+              className={`rounded-full px-2 py-1 text-[10px] font-bold ${
+                connectionState === 'LIVE'
+                  ? 'bg-emerald-500/10 text-emerald-400'
+                  : connectionState === 'CONNECTING'
+                    ? 'bg-amber-500/10 text-amber-400'
+                    : 'bg-red-500/10 text-red-400'
+              }`}
+            >
+              {connectionState === 'LIVE'
+                ? '● LIVE'
+                : connectionState === 'CONNECTING'
+                  ? '● CONNECTING'
+                  : '● OFFLINE'}
+            </span>
+
             </div>
 
             <h1 className="mt-2 text-2xl font-black tracking-tight sm:text-3xl">
@@ -1939,13 +1967,6 @@ export default function FootprintPage() {
 
                   <tbody>
                     {levels.map((row, index) => {
-                      const maxCell = Math.max(
-                        1,
-                        ...levels.map((level) =>
-                          Math.max(level.bid, level.ask),
-                        ),
-                      )
-
                       const bidWidth = (row.bid / maxCell) * 100
                       const askWidth = (row.ask / maxCell) * 100
 
