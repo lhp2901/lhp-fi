@@ -9,7 +9,7 @@ import React, {
   useState,
 } from 'react'
 
-type StreamConnectionState = 'LIVE' | 'CONNECTING' | 'OFFLINE';
+type StreamConnectionState = 'LIVE' | 'CONNECTING' | 'OFFLINE' | 'ERROR';
 type JsonObject = Record<string, any>
 
 type FootprintLevel = {
@@ -64,27 +64,22 @@ const API_BASE = (
 
 
 const DEFAULT_SYMBOLS = [
-  'FPT',
-  'SSI',
-  'HPG',
-  'VCB',
-  'VND',
-  'DXG',
-  'GEX',
-  'MWG',
-  'CTG',
-  'TCB',
-  'MBB',
-  'STB',
-  'VIC',
-  'VHM',
-  'DGC',
-  'VNM',
-  'HSG',
-  'NVL',
-  'PDR',
-  'VNINDEX',
-  'VN30',
+  "FPT",
+  "SSI",
+  "PNJ",
+  "HPG",
+  "VND",
+  "DXG",
+  "HSG",
+  "NVL",
+  "PDR",
+  "TCH",
+
+  // Cổ phiếu bổ sung
+  "VIB",
+  // Phái sinh
+  "41I1GB000",
+
 ]
 
 const TIMEFRAMES = [
@@ -249,7 +244,9 @@ function normalizeSymbols(data: any): string[] {
     .map((item) => item.trim().toUpperCase())
     .filter(Boolean)
 
-  return [...new Set([...values, ...DEFAULT_SYMBOLS])]
+  // Use the Settings/API list as the source of truth. Defaults are only a fallback
+  // when the API does not return any symbols.
+  return values.length ? [...new Set(values)] : DEFAULT_SYMBOLS
 }
 
 function normalizeLevels(data: any): FootprintLevel[] {
@@ -407,7 +404,7 @@ function normalizeCandles(data: any): FootprintCandle[] {
     'results',
   ])
 
-  return rows.slice(-100).map((row: any) => {
+  return rows.slice(-1000).map((row: any) => {
     const rawTime = firstValue(row, [
       'timestamp',
       'time',
@@ -1137,6 +1134,66 @@ function FootprintChart({
   )
 }
 
+function VietnamMarketSession() {
+  const [now, setNow] = useState<Date | null>(null);
+
+  useEffect(() => {
+    const tick = () => setNow(new Date());
+    tick();
+    const timer = window.setInterval(tick, 1000);
+    return () => window.clearInterval(timer);
+  }, []);
+
+  const parts = now
+    ? new Intl.DateTimeFormat('en-GB', {
+        timeZone: 'Asia/Ho_Chi_Minh',
+        weekday: 'short',
+        hour: '2-digit',
+        minute: '2-digit',
+        second: '2-digit',
+        hour12: false,
+      }).formatToParts(now)
+    : [];
+  const get = (type: string) => parts.find((part) => part.type === type)?.value ?? '';
+  const weekday = get('weekday');
+  const hour = Number(get('hour'));
+  const minute = Number(get('minute'));
+  const seconds = Number(get('second'));
+  const minutes = hour * 60 + minute;
+  const isWeekday = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri'].includes(weekday);
+
+  let label = 'Đã đóng cửa';
+  let tone = 'text-slate-400';
+  if (isWeekday && minutes >= 9 * 60 && minutes < 11 * 60 + 30) {
+    label = 'Phiên sáng'; tone = 'text-emerald-400';
+  } else if (isWeekday && minutes >= 11 * 60 + 30 && minutes < 13 * 60) {
+    label = 'Nghỉ trưa'; tone = 'text-amber-400';
+  } else if (isWeekday && minutes >= 13 * 60 && minutes < 14 * 60 + 30) {
+    label = 'Phiên chiều'; tone = 'text-emerald-400';
+  } else if (isWeekday && minutes >= 14 * 60 + 30 && minutes < 14 * 60 + 45) {
+    label = 'ATC HOSE'; tone = 'text-sky-400';
+  }
+
+  const clock = now
+    ? `${String(hour).padStart(2, '0')}:${String(minute).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`
+    : '--:--:--';
+
+  return (
+    <div className="flex flex-wrap items-center gap-3 rounded-xl border border-slate-700 bg-slate-900/70 px-4 py-3">
+      <div>
+        <div className="text-[10px] font-bold uppercase tracking-wider text-slate-500">Giờ Việt Nam (UTC+7)</div>
+        <div className="font-mono text-lg font-bold text-slate-100">{clock}</div>
+      </div>
+      <div className="h-8 w-px bg-slate-700" />
+      <div>
+        <div className="text-[10px] font-bold uppercase tracking-wider text-slate-500">Phiên HOSE</div>
+        <div className={`text-sm font-bold ${tone}`}>{label}</div>
+      </div>
+      <div className="ml-auto text-[10px] text-slate-500">Sáng 09:00–11:30 · Nghỉ 11:30–13:00 · Chiều 13:00–14:30 · ATC 14:30–14:45</div>
+    </div>
+  );
+}
+
 export default function FootprintPage() {
   
   const [symbols, setSymbols] = useState<string[]>(DEFAULT_SYMBOLS)
@@ -1157,22 +1214,31 @@ export default function FootprintPage() {
   const [lastUpdated, setLastUpdated] = useState<Date | null>(null)
   const [busy, setBusy] = useState(false)
   const getStreamConnectionState = (): StreamConnectionState => {
-  // Backend xác nhận kết nối thành công.
-  if (streamStatus.connected === true) {
-    return 'LIVE';
-  }
+    // API status có thể trả { data: { stream: ..., engine: ... } } hoặc
+    // payload đã được normalize; kiểm tra nhiều lớp nhưng không giả LIVE
+    // chỉ vì engine.success=true.
+    const root = streamStatus as JsonObject;
+    const data = (root.data && typeof root.data === 'object' ? root.data : root) as JsonObject;
+    const stream = (data.stream && typeof data.stream === 'object' ? data.stream : data) as JsonObject;
+    const engine = (data.engine && typeof data.engine === 'object' ? data.engine : {}) as JsonObject;
 
-  // Thread đang chạy hoặc đã khởi động nhưng chưa kết nối.
-  if (
-    streamStatus.running === true ||
-    streamStatus.started === true
-  ) {
-    return 'CONNECTING';
-  }
+    const connected = firstValue(stream, [
+      'connected', 'is_connected', 'websocket_connected', 'ws_connected',
+    ], firstValue(data, ['connected', 'is_connected'], false));
+    const authenticated = firstValue(stream, ['authenticated', 'is_authenticated'], false);
+    const subscribed = firstValue(stream, ['subscribed', 'is_subscribed'], false);
+    const running = firstValue(stream, ['running', 'started', 'is_running'], false);
+    const status = String(firstValue(stream, ['status', 'state', 'connection_status'], '')).toLowerCase();
+    const error = firstValue(stream, ['last_error', 'error'], firstValue(engine, ['last_error', 'last_persistence_error'], null));
 
-  // Stream đã dừng hoặc backend chưa xác nhận đang chạy.
-  return 'OFFLINE';
-};
+    if (connected === true || (authenticated === true && subscribed === true)) return 'LIVE';
+    if (['error', 'failed', 'failure', 'fault'].includes(status) || Boolean(error)) return 'ERROR';
+    if (running === true || ['connecting', 'reconnecting', 'starting', 'pending'].includes(status)) return 'CONNECTING';
+
+    // Engine activity means data is being processed, but not necessarily that
+    // the websocket is currently connected; keep the state conservative.
+    return 'OFFLINE';
+  };
 
   const connectionState = getStreamConnectionState();
   const [chartMode, setChartMode] = useState<ChartMode>('footprint')
@@ -1194,36 +1260,57 @@ export default function FootprintPage() {
     activeTimeframe.current = timeframe
   }, [symbol, timeframe])
 
+  // Request có timeout để UI không bị treo nếu backend/Render không phản hồi.
   const api = useCallback(
     async (path: string, init?: RequestInit) => {
-      const response = await fetch(`${API_BASE}${path}`, {
-        ...init,
-        headers: {
-          Accept: 'application/json',
-          ...(init?.headers || {}),
-        },
-        cache: 'no-store',
-      })
+      const controller = new AbortController()
+      const timeoutId = window.setTimeout(() => controller.abort(), 15_000)
+      const externalSignal = init?.signal
+      const abortFromExternal = () => controller.abort()
 
-      const text = await response.text()
-
-      let body: any = {}
+      if (externalSignal) {
+        if (externalSignal.aborted) controller.abort()
+        else externalSignal.addEventListener('abort', abortFromExternal, { once: true })
+      }
 
       try {
-        body = text ? JSON.parse(text) : {}
-      } catch {
-        body = { message: text }
-      }
+        const response = await fetch(`${API_BASE}${path}`, {
+          ...init,
+          signal: controller.signal,
+          headers: {
+            Accept: 'application/json',
+            ...(init?.headers || {}),
+          },
+          cache: 'no-store',
+        })
 
-      if (!response.ok) {
-        throw new Error(
-          body?.error ||
-            body?.message ||
-            `HTTP ${response.status}`,
-        )
-      }
+        const text = await response.text()
+        let body: any = {}
 
-      return body
+        try {
+          body = text ? JSON.parse(text) : {}
+        } catch {
+          body = { message: text }
+        }
+
+        if (!response.ok) {
+          const detail = body?.error || body?.message || `HTTP ${response.status}`
+          throw new Error(`API ${path}: ${detail}`)
+        }
+
+        return body
+      } catch (error: any) {
+        if (error?.name === 'AbortError') {
+          throw new Error(`Yêu cầu ${path} quá thời gian chờ (15 giây).`)
+        }
+        if (error instanceof TypeError) {
+          throw new Error(`Không kết nối được backend (${path}). Kiểm tra API server và mạng.`)
+        }
+        throw error
+      } finally {
+        window.clearTimeout(timeoutId)
+        externalSignal?.removeEventListener('abort', abortFromExternal)
+      }
     },
     [],
   )
@@ -1254,7 +1341,7 @@ export default function FootprintPage() {
           api(`/api/footprint/${encoded}`),
           api(`/api/footprint/${encoded}/trades`),
           api(
-            `/api/footprint/${encoded}/candles?timeframe=${tf}`,
+            `/api/footprint/${encoded}/candles?timeframe=${tf}&source=auto&limit=1000&newest_first=false`,
           ),
           api('/api/footprint/stream/status'),
         ])
@@ -1289,14 +1376,21 @@ export default function FootprintPage() {
 
         if (tradesResult.status === 'fulfilled') {
           setTrades(normalizeTrades(tradesResult.value))
+        } else {
+          // Preserve last valid tape snapshot; the main book error is reported separately.
+          console.warn('[Footprint] Trades endpoint failed:', tradesResult.reason)
         }
 
         if (candlesResult.status === 'fulfilled') {
           setCandles(normalizeCandles(candlesResult.value))
+        } else {
+          console.warn('[Footprint] Candles endpoint failed:', candlesResult.reason)
         }
 
         if (statusResult.status === 'fulfilled') {
           setStreamStatus(normalizePayload(statusResult.value))
+        } else {
+          console.warn('[Footprint] Stream status endpoint failed:', statusResult.reason)
         }
 
         setLastUpdated(new Date())
@@ -1325,14 +1419,24 @@ export default function FootprintPage() {
   }, [loadSymbols])
 
   useEffect(() => {
+    // Clear data from the previous selection to avoid briefly showing mixed symbols/timeframes.
     setLoading(true)
+    setRequestError('')
+    setPayload({})
+    setLevels([])
+    setTrades([])
+    setCandles([])
+
     void loadAll(symbol, timeframe)
 
     if (!autoRefresh) return
 
+    // Polling is paused while the tab is hidden to reduce unnecessary backend load.
     const timer = window.setInterval(() => {
-      void loadAll(symbol, timeframe)
-    }, 1500)
+      if (document.visibilityState === 'visible') {
+        void loadAll(symbol, timeframe)
+      }
+    }, 2000)
 
     return () => window.clearInterval(timer)
   }, [symbol, timeframe, autoRefresh, loadAll])
@@ -1347,6 +1451,7 @@ export default function FootprintPage() {
   }
 
   const controlStream = async (action: 'start' | 'stop') => {
+    if (busy) return
     setBusy(true)
 
     setActionMessage(
@@ -1559,14 +1664,18 @@ export default function FootprintPage() {
                   ? 'bg-emerald-500/10 text-emerald-400'
                   : connectionState === 'CONNECTING'
                     ? 'bg-amber-500/10 text-amber-400'
-                    : 'bg-red-500/10 text-red-400'
+                    : connectionState === 'ERROR'
+                      ? 'bg-rose-500/10 text-rose-300'
+                      : 'bg-red-500/10 text-red-400'
               }`}
             >
               {connectionState === 'LIVE'
                 ? '● LIVE'
                 : connectionState === 'CONNECTING'
                   ? '● CONNECTING'
-                  : '● OFFLINE'}
+                  : connectionState === 'ERROR'
+                    ? '● ERROR'
+                    : '● OFFLINE'}
             </span>
 
             </div>
@@ -1577,6 +1686,12 @@ export default function FootprintPage() {
 
             <p className="mt-1 text-xs text-slate-500">
               Phân tích dòng tiền, Volume, Bid × Ask và Delta theo từng mức giá.
+            </p>
+            <p className="mt-1 text-[10px] text-slate-500" aria-live="polite">
+              Cập nhật gần nhất: {lastUpdated
+                ? lastUpdated.toLocaleTimeString('vi-VN', { hour12: false })
+                : 'Đang chờ dữ liệu'}
+              {autoRefresh ? ' · Tự động làm mới 2 giây' : ' · Tự động làm mới đang tắt'}
             </p>
           </div>
                 
@@ -1596,8 +1711,9 @@ export default function FootprintPage() {
             <button
               type="button"
               onClick={() => void loadAll(symbol, timeframe)}
-              disabled={loading}
-              className="rounded-lg border border-slate-700 px-3 py-2 text-xs font-bold hover:bg-slate-800 disabled:opacity-50"
+              disabled={loading || busy}
+              aria-label="Tải lại dữ liệu Footprint"
+              className="rounded-lg border border-slate-700 px-3 py-2 text-xs font-bold hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-50"
             >
               ↻ Làm mới
             </button>
@@ -1774,6 +1890,7 @@ export default function FootprintPage() {
           </div>
         </section>
 
+        <VietnamMarketSession />       
         <section className="grid grid-cols-2 gap-3 md:grid-cols-3 xl:grid-cols-6">
           <Metric
             label="Symbol"
@@ -1814,7 +1931,49 @@ export default function FootprintPage() {
             sub={`Bid ${formatFootprintValue(totalBid)} / Ask ${formatFootprintValue(totalAsk)}`}
             tone={totalDelta > 0 ? 'green' : totalDelta < 0 ? 'red' : 'neutral'}
           />
+          {/* 
+          <Metric
+            label="Foreign Buy"
+            value="—"
+            sub="Chưa có feed khối lượng nước ngoài"
+            tone="blue"
+          />
 
+          <Metric
+            label="Foreign Sell"
+            value="—"
+            sub="Chưa có feed khối lượng nước ngoài"
+            tone="red"
+          />
+
+          <Metric
+            label="Foreign Delta"
+            value="—"
+            sub="Mua − bán; chờ API dữ liệu"
+            tone="neutral"
+          />
+
+          <Metric
+            label="Tự doanh mua"
+            value="—"
+            sub="Chưa có feed tự doanh"
+            tone="green"
+          />
+
+          <Metric
+            label="Tự doanh bán"
+            value="—"
+            sub="Chưa có feed tự doanh"
+            tone="red"
+          />
+
+          <Metric
+            label="Tự doanh Delta"
+            value="—"
+            sub="Mua − bán; chờ API dữ liệu"
+            tone="neutral"
+          />
+          */}  
           <Metric
             label="Cumulative Delta"
             value={
@@ -2298,8 +2457,9 @@ export default function FootprintPage() {
         </details>
 
         <footer className="pb-4 text-center text-[10px] text-slate-600">
-          LHP-FI Footprint Terminal · Order Flow Analytics · Data quality
-          depends on the configured market data provider.
+          LHP-FI Footprint Terminal · Order Flow Analytics · Dữ liệu hiển thị
+          phụ thuộc nguồn thị trường và trạng thái backend. Auto-refresh chỉ tải lại
+          dữ liệu hiện có, không tự tạo giao dịch mới.
         </footer>
       </div>
     </main>

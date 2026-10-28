@@ -120,6 +120,14 @@ function formatNumber(
   });
 }
 
+function formatDelta(value: number): string {
+  if (!Number.isFinite(value)) return "—";
+
+  return (value * 10).toLocaleString("vi-VN", {
+    maximumFractionDigits: 0,
+  });
+}
+
 function formatPercent(
   value: number | null | undefined,
 ): string {
@@ -218,7 +226,15 @@ function Metric({
   description?: string;
 }) {
   return (
-    <div className="min-w-0 rounded-lg border border-slate-800/90 bg-slate-950/70 p-3">
+      <div
+        className={`min-w-0 rounded-lg border p-3 ${
+          label === "POC"
+            ? "border-amber-500/30 bg-amber-500/[0.06]"
+            : label === "Giá đóng cửa"
+              ? "border-sky-500/30 bg-sky-500/[0.06]"
+              : "border-slate-800/90 bg-slate-950/70"
+        }`}
+      >
       <span className="text-xs font-medium text-slate-500">
         {label}
       </span>
@@ -701,8 +717,8 @@ export default function TradeSignalPanel({
       <div className="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-4">
         <Metric
           label="Delta"
-          value={formatNumber(signal.delta)}
-          color={getDeltaColor(delta)}
+          value={formatDelta(signal.delta)}
+          color={getDeltaColor(signal.delta)}
           description="Chênh lệch khối lượng Ask - Bid"
         />
 
@@ -720,6 +736,7 @@ export default function TradeSignalPanel({
               ? formatNumber(pocPrice)
               : "N/A"
           }
+          color="text-amber-300"
           description="Mức giá có khối lượng lớn nhất"
         />
 
@@ -730,6 +747,7 @@ export default function TradeSignalPanel({
               ? formatNumber(closePrice)
               : "N/A"
           }
+          color="text-sky-300"
           description="Giá đóng cửa của nến được phân tích"
         />
       </div>

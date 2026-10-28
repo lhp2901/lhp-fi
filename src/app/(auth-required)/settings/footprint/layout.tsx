@@ -4,6 +4,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 const navItems = [
  { href: "/settings/footprint", label: "Tổng quan", exact: true },
+ { href: "/settings/footprint/symbols", label: "Mã cổ phiếu", exact: true },
  { href: "/settings/footprint/market-data", label: "Market Data" },
  { href: "/settings/footprint/engine", label: "Engine" },
  { href: "/settings/footprint/order-flow", label: "Order Flow" },
