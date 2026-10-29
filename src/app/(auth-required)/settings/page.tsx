@@ -4,7 +4,6 @@ import {
   useCallback,
   useEffect,
   useState,
-  type ReactNode,
 } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
@@ -271,12 +270,14 @@ async function readApiResponse<T extends ApiResult>(
 async function postApi<T extends ApiResult>(
   url: string,
   body: unknown,
+  extraHeaders: Record<string, string> = {},
 ): Promise<T> {
   const response = await fetch(url, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
       Accept: 'application/json',
+      ...extraHeaders,
     },
     cache: 'no-store',
     body: JSON.stringify(body),
@@ -610,8 +611,33 @@ export default function SettingsPage() {
       return
     }
 
+    // Backend xác thực người dùng qua Supabase JWT Bearer token.
+    // Không gửi user_id từ client vì backend phải tự xác định user.
+    const {
+      data: { session },
+      error: sessionError,
+    } = await supabase.auth.getSession()
+
+    if (sessionError || !session?.access_token) {
+      setSyncError(
+        'Phiên đăng nhập đã hết hạn hoặc không có access token. Vui lòng đăng nhập lại.',
+      )
+      setSyncStatus('error')
+      setSyncMessage('Không thể xác thực yêu cầu đồng bộ DNSE.')
+      return
+    }
+
     const baseUrl = getBackendBaseUrl()
     const requestUrl = `${baseUrl}/api/dnse/sync`
+
+    const requestTargets = [...new Set(syncTargets)]
+    const requestSymbols = syncTargets.includes('stocks')
+      ? [...new Set(
+          selectedStockSymbols
+            .map((symbol) => symbol.trim().toUpperCase())
+            .filter(Boolean),
+        )]
+      : []
 
     const started = new Date()
 
@@ -627,11 +653,11 @@ export default function SettingsPage() {
       const response = await postApi<SyncApiResponse>(
         requestUrl,
         {
-          targets: syncTargets,
-          symbols: syncTargets.includes('stocks')
-            ? selectedStockSymbols
-            : [],
-          user_id: currentUser.id,
+          targets: requestTargets,
+          symbols: requestSymbols,
+        },
+        {
+          Authorization: `Bearer ${session.access_token}`,
         },
       )
 
@@ -1552,7 +1578,7 @@ export default function SettingsPage() {
             />
 
             <QuickLink
-              href="settings/footprint"
+              href="/settings/footprint"
               title="Footprint Control Center"
               description="Quản trị dữ liệu giao dịch, Order Flow và chất lượng dữ liệu."
               icon="⇅"
